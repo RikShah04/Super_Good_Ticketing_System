@@ -1,8 +1,8 @@
 # Super Good Ticketing System — Event Ticketing Platform
 
 **Course:** COMPSCI 426  
-**Team:** Henry Branham, Erika Lam, Jasper McCormack, Ian Mei, Ethan Pham, James Rust, Rikhav Shah, Jonathan Zhang
-**System:** Event Ticketing
+**Team:** Henry Branham, Erika Lam, Jasper McCormack, Ian Mei, Ethan Pham, James Rust, Rikhav Shah, Jonathan Zhang  
+**System:** Event Ticketing  
 **Repository:** [\[GitHub URL\]](https://github.com/RikShah04/Super_Good_Ticketing_System)
 
 ---
@@ -11,9 +11,11 @@
 
 | Team Member | Services / Components Owned                            |
 | ----------- | ------------------------------------------------------ |
-| [Name]      | [e.g. `order-service/`, `order-service/db/schema.sql`] |
-| [Name]      | [e.g. `restaurant-service/`, `redis/menu-cache`]       |
-| [Name]      | [e.g. `dispatch-worker/`, `k6/`]                       |
+| Ian Mei and Ethan Pham      | `ticket-purchase/`, `ticket-purchase/db/schema.sql`, `waitlist/` |
+| Jasper McCormack and Erika Lam    | `event-catalog/`,`event-catalog/db/schema.sql`      |
+| Henry Branham     | `payment/`, `k6/`                       |
+| James Rust and Rikhav Shah      | `notification/` |
+| Jonathan Zhang    | `analytics/`, `analytics/db/schema.sql` |
 
 > Ownership is verified by `git log --author`. Each person must have meaningful commits in the directories they claim.
 

@@ -16,9 +16,11 @@
 
 | Team Member | Files / Directories Owned This Sprint           |
 | ----------- | ----------------------------------------------- |
-| [Name]      | `[service-dir]/`, `[service-dir]/db/schema.sql` |
-| [Name]      | `[service-dir]/`, `compose.yml` additions       |
-| [Name]      | `k6/sprint-1.js`, `[worker-dir]/`               |
+| Ian Mei and Ethan Pham      | `ticket-purchase/`, `ticket-purchase/db/schema.sql`, `waitlist/` |
+| Jasper McCormack and Erika Lam    | `event-catalog/`,`event-catalog/db/schema.sql`      |
+| Henry Branham     | `payment/`, `k6/`                       |
+| James Rust and Rikhav Shah      | `notification/` |
+| Jonathan Zhang    | `analytics/`, `analytics/db/schema.sql` |
 
 Each person must have meaningful commits in the paths they claim. Ownership is verified by:
 
