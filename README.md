@@ -1,9 +1,9 @@
-# [Team Name] — [System Name]
+# Super Good Ticketing System — Event Ticketing Platform
 
 **Course:** COMPSCI 426  
-**Team:** [Name], [Name], [Name], ...  
-**System:** [e.g. Event Ticketing / Food Delivery / Video Platform / ...]  
-**Repository:** [GitHub URL — public fork of https://github.com/umass-cs-426/starter-project]
+**Team:** Henry Branham, Erika Lam, Jasper McCormack, Ian Mei, Ethan Pham, James Rust, Rikhav Shah, Jonathan Zhang
+**System:** Event Ticketing
+**Repository:** [\[GitHub URL\]](https://github.com/RikShah04/Super_Good_Ticketing_System)
 
 ---
 
