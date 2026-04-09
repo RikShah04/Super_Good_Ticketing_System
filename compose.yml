@@ -50,6 +50,46 @@ services:
       - TERM=xterm-256color
     # Holmes has no ports — access it via: docker compose exec holmes bash
 
+  payment-service:
+    build: ./payment-service
+    container_name: payment-service
+    restart: unless-stopped
+    ports:
+      - "3001:3001"          # expose on host for local testing
+    networks:
+      - team-net             # REQUIRED — makes it reachable from holmes
+    environment:
+      - DATABASE_URL=postgres://admin:supersecurepassword123@postgres:5432/payments
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  payment-service-postgres:
+    image: postgres:16
+    container_name: payment-service-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: supersecurepassword123
+      POSTGRES_DB: payments
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # ── Add your services here ─────────────────────────────────────────────────
   #
   # Pattern for each service:
