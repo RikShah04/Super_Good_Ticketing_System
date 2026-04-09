@@ -66,10 +66,12 @@ git log --author="Name" --oneline -- path/to/directory/
 
 ### [Erika Lam]
 
-- [ ] Set up `[service]/` with Express + Redis connection
+- [ ] Set up `refund/` with Express + Redis connection
 - [ ] Implement `GET /health` with Redis check
-- [ ] Implement `GET /[resource]` — stub returning placeholder data
-- [ ] Test synchronous call to [other service]
+- [ ] Implement `GET /seat-released` — stub returning placeholder data
+- [ ] Add `healthcheck` directive to `compose.yml`
+- [ ] Test synchronous call to Ticket Purchase Service
+- [ ] Write `refund/db/schema.sql`
 
 ### [James Rust]
 
