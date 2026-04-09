@@ -81,6 +81,7 @@ services:
       - team-net
     environment:
       - PORT=3000
+      - SERVICE_NAME=fraud-worker
       - DATABASE_URL=postgres://fraud:fraud@fraud-db:5432/frauddb
       - REDIS_URL=redis://redis:6379
       - FRAUD_QUEUE_KEY=fraud:queue
