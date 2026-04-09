@@ -36,17 +36,14 @@ git log --author="Name" --oneline -- path/to/directory/
 
 ### [Ian Mei]
 
-- [ ] Set up `[service]/` with Express + Postgres connection
-- [ ] Implement `GET /health` with DB check
-- [ ] Write `db/schema.sql` and seed script
+- [ ] Write `ticket-purchase/db/schema.sql`
 - [ ] Add `healthcheck` directive to `compose.yml`
 
 ### [Ethan Pham]
 
-- [ ] Set up `[service]/` with Express + Redis connection
+- [ ] Set up `ticket-purchase/` with Express + Redis connection
 - [ ] Implement `GET /health` with Redis check
-- [ ] Implement `GET /[resource]` — stub returning placeholder data
-- [ ] Test synchronous call to [other service]
+- [ ] Implement `POST /purchase` — calls `payment` service to simulate processing
 
 ### [Jasper McCormack]
 
