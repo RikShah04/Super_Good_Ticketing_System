@@ -9,11 +9,15 @@
 
 ## Team and Service Ownership
 
-| Team Member | Services / Components Owned                            |
-| ----------- | ------------------------------------------------------ |
-| [Name]      | [e.g. `order-service/`, `order-service/db/schema.sql`] |
-| [Name]      | [e.g. `restaurant-service/`, `redis/menu-cache`]       |
-| [Name]      | [e.g. `dispatch-worker/`, `k6/`]                       |
+| Team Member | Files / Directories Owned This Sprint |
+| ----------- | ----------------------------------------------- |
+| Ian Mei, Ethan Pham | `ticket-purchase/`, `ticket-purchase/db/schema.sql`, `waitlist/` |
+| Jasper McCormack | `event-catalog/`,`event-catalog/db/schema.sql` |
+| Henry Branham | `payment/`, `k6/` |
+| Rikhav Shah | `notification/` |
+| Erika Lam | `refund/`, `refund/db/schema.sql` |
+| James Rust | `fraud-detection/`, `fraud-detection/db/schema.sql` |
+| Jonathan Zhang | `analytics/`, `analytics/db/schema.sql` |
 
 > Ownership is verified by `git log --author`. Each person must have meaningful commits in the directories they claim.
 

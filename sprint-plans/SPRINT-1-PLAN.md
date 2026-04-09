@@ -8,17 +8,21 @@
 
 ## Goal
 
-[One or two sentences on what your team will have working by end of sprint. Be specific. "Order service, restaurant service, and synchronous call between them running in Docker Compose with health endpoints" is good. "Get stuff working" is not.]
+Create our `event-catalog`, `ticket-purchase`, `payment` and `notifications` services online after running `docker compose up`, with working `/health` endpoints. `ticket-purchase` will make a synchronous call to `payment`.
 
 ---
 
 ## Ownership
 
-| Team Member | Files / Directories Owned This Sprint           |
+| Team Member | Files / Directories Owned This Sprint |
 | ----------- | ----------------------------------------------- |
-| [Name]      | `[service-dir]/`, `[service-dir]/db/schema.sql` |
-| [Name]      | `[service-dir]/`, `compose.yml` additions       |
-| [Name]      | `k6/sprint-1.js`, `[worker-dir]/`               |
+| Ian Mei, Ethan Pham | `ticket-purchase/`, `ticket-purchase/db/schema.sql`, `waitlist/` |
+| Jasper McCormack | `event-catalog/`,`event-catalog/db/schema.sql` |
+| Henry Branham | `payment/`, `k6/` |
+| Rikhav Shah | `notification/` |
+| Erika Lam | `refund/`, `refund/db/schema.sql` |
+| James Rust | `fraud-detection/`, `fraud-detection/db/schema.sql` |
+| Jonathan Zhang | `analytics/`, `analytics/db/schema.sql` |
 
 Each person must have meaningful commits in the paths they claim. Ownership is verified by:
 
