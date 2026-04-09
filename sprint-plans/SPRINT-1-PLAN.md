@@ -34,21 +34,53 @@ git log --author="Name" --oneline -- path/to/directory/
 
 ## Tasks
 
-### [Name]
+### [Ian Mei]
 
 - [ ] Set up `[service]/` with Express + Postgres connection
 - [ ] Implement `GET /health` with DB check
 - [ ] Write `db/schema.sql` and seed script
 - [ ] Add `healthcheck` directive to `compose.yml`
 
-### [Name]
+### [Ethan Pham]
 
 - [ ] Set up `[service]/` with Express + Redis connection
 - [ ] Implement `GET /health` with Redis check
 - [ ] Implement `GET /[resource]` — stub returning placeholder data
 - [ ] Test synchronous call to [other service]
 
-### [Name]
+### [Jasper McCormack]
+
+- [ ] Wire `depends_on: condition: service_healthy` in `compose.yml`
+- [ ] Write `k6/sprint-1.js` baseline load test
+- [ ] Write `README.md` startup instructions and endpoint list
+
+### [Henry Braham]
+
+- [ ] Wire `depends_on: condition: service_healthy` in `compose.yml`
+- [ ] Write `k6/sprint-1.js` baseline load test
+- [ ] Write `README.md` startup instructions and endpoint list
+
+### [Rikhav Shah]
+
+- [ ] Set up `[service]/` with Express + Postgres connection
+- [ ] Implement `GET /health` with DB check
+- [ ] Write `db/schema.sql` and seed script
+- [ ] Add `healthcheck` directive to `compose.yml`
+
+### [Erika Lam]
+
+- [ ] Set up `[service]/` with Express + Redis connection
+- [ ] Implement `GET /health` with Redis check
+- [ ] Implement `GET /[resource]` — stub returning placeholder data
+- [ ] Test synchronous call to [other service]
+
+### [James Rust]
+
+- [ ] Wire `depends_on: condition: service_healthy` in `compose.yml`
+- [ ] Write `k6/sprint-1.js` baseline load test
+- [ ] Write `README.md` startup instructions and endpoint list
+
+### [Jonathan Zhang]
 
 - [ ] Wire `depends_on: condition: service_healthy` in `compose.yml`
 - [ ] Write `k6/sprint-1.js` baseline load test
