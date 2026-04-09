@@ -2,7 +2,7 @@
 
 **Course:** COMPSCI 426  
 **Team:** Ian Mei, Ethan Pham, Jasper McCormack, Henry Braham, Rikhav Shah, Erika Lam, James Rust, Jonathan Zhang  
-**System:** Event Ticketing. 
+**System:** Event Ticketing   
 **Repository:** [\[GitHub URL — public fork of https://github.com/umass-cs-426/starter-project\]](https://github.com/RikShah04/Super_Good_Ticketing_System)
 
 ---
