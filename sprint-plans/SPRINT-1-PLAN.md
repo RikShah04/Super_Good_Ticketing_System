@@ -1,4 +1,4 @@
-# Sprint 1 Plan — [Team Name]
+# Sprint 1 Plan — Super Good Ticketing System
 
 **Sprint:** 1 — Foundation  
 **Dates:** 04.07 → 04.14  
@@ -8,7 +8,7 @@
 
 ## Goal
 
-Create our `event-catalog`, `ticket-purchase`, `payment` and `notifications` services online after running `docker compose up`, with working `/health` endpoints. `ticket-purchase` will make a synchronous call to `payment`.
+Create all our services and workers, and verify that they start correctly with `docker compose up`. `ticket-purchase` will make a synchronous call to `payment`, and all services will have a `/health` endpoint. Establish a baseline with `k6` testing to service endpoints.
 
 ---
 
