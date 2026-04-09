@@ -53,9 +53,10 @@ git log --author="Name" --oneline -- path/to/directory/
 
 ### [Henry Braham]
 
-- [ ] Wire `depends_on: condition: service_healthy` in `compose.yml`
+- [ ] Set up `payment-service/` with Express + Postgres connection
+- [ ] Implement `GET /health` with Postgres check
+- [ ] Implement `GET /process` with simulated work for purchase service-service call
 - [ ] Write `k6/sprint-1.js` baseline load test
-- [ ] Write `README.md` startup instructions and endpoint list
 
 ### [Rikhav Shah]
 
