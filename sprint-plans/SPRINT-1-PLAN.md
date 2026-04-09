@@ -79,9 +79,8 @@ git log --author="Name" --oneline -- path/to/directory/
 
 ### [Jonathan Zhang]
 
-- [ ] Wire `depends_on: condition: service_healthy` in `compose.yml`
-- [ ] Write `k6/sprint-1.js` baseline load test
-- [ ] Write `README.md` startup instructions and endpoint list
+- [ ] Set up analytics in compose.yml.
+- [ ] `GET /health` returns `200`.
 
 ---
 
