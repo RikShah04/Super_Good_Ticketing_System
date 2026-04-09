@@ -52,6 +52,53 @@ services:
 
   # ── Add your services here ─────────────────────────────────────────────────
   #
+
+  fraud-db:
+    image: postgres:16-alpine
+    container_name: fraud-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: frauddb
+      POSTRGRES_USER: fraud
+      POSTGRES_PASSWORD: fraud
+    volumes:
+      - fraud-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraud -d frauddb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  
+  fraud-worker:
+    build: ./fraud-worker
+    container_name: fraud-worker
+    restart: unless-stopped
+    ports:
+      - "3010:3000"
+    networks:
+      - team-net
+    environment:
+      - PORT=3000
+      - DATABASE_URL=postgres://fraud:fraud@fraud-db:5432/frauddb
+      - REDIS_URL=redis://redis:6379
+      - FRAUD_QUEUE_KEY=fraud:queue
+      - FRAUD_DLQ_KEY=fraud:dlq
+      - FRAUD_FLAGGED_CHANNEL=fraud:flagged
+    depends_on:
+      fraud-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q0-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    
+
   # Pattern for each service:
   #
   # your-service:
@@ -114,5 +161,7 @@ services:
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
 #
+volumes:
+  fraud-db-data:
 # volumes:
 #   postgres-data:
