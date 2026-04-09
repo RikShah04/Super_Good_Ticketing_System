@@ -90,7 +90,9 @@ git log --author="Name" --oneline -- path/to/directory/
 
 ## Risks
 
-[What could go wrong? What are you uncertain about? What will you do if a task takes longer than expected?]
+During this sprint, we expect to encounter issues when connceting the logic to the html. Similarly, with so many moving parts being developed individually, we expect to run into problems when connecting them all together. As a result, we believe that crashing will occur. 
+
+If a task takes longer than expected, team members will communicate to the rest of the team. From there, we will redesign the task for the next sprint, aiming to set more realistic expectations for the next sprint and redefining the task into smaller, more manageable tasks. 
 
 ---
 
