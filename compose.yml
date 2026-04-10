@@ -111,8 +111,72 @@ services:
   #     timeout: 3s
   #     retries: 5
 
+  ticket-purchase:
+    build: ./ticket-purchase
+    container_name: ticket-purchase
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - team-net
+    environment:
+      - DATABASE_URL=postgres://user:pass@ticket-purchase-db:5432/ticket-purchase-db
+      - REDIS_URL=redis://redis:6379
+      - WAITLIST_WORKER_TIMEOUT_MS=10000
+    depends_on:
+      # ticket-purchase-db:
+      #   condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # waitlist:
+  #   build: ./waitlist
+  #   container_name: waitlist
+  #   restart: unless-stopped
+  #   networks:
+  #     - team-net
+  #   environment:
+  #     - REDIS_URL=redis://redis:6379
+  #     - HEARTBEAT_MS=5000
+
+  ticket-purchase-db:
+    image: postgres:16
+    container_name: ticket-purchase-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: ticket-purchase-db
+    volumes:
+      - ticket-purchase-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d ticket-purchase-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: unless-stopped
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
 #
-# volumes:
-#   postgres-data:
+volumes:
+  ticket-purchase-db-data:
