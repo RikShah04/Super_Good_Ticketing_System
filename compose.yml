@@ -124,8 +124,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - WAITLIST_WORKER_TIMEOUT_MS=10000
     depends_on:
-      # ticket-purchase-db:
-      #   condition: service_healthy
+      ticket-purchase-db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
@@ -135,15 +135,15 @@ services:
       retries: 3
       start_period: 15s
 
-  # waitlist:
-  #   build: ./waitlist
-  #   container_name: waitlist
-  #   restart: unless-stopped
-  #   networks:
-  #     - team-net
-  #   environment:
-  #     - REDIS_URL=redis://redis:6379
-  #     - HEARTBEAT_MS=5000
+  waitlist:
+    build: ./waitlist
+    container_name: waitlist
+    restart: unless-stopped
+    networks:
+      - team-net
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - HEARTBEAT_MS=5000
 
   ticket-purchase-db:
     image: postgres:16
