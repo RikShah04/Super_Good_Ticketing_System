@@ -12,3 +12,5 @@ client.on('error', (err) => {
 setInterval(async () => {
   await client.set('waitlist-heartbeat', Date.now());
 }, HEARTBEAT_MS);
+
+await client.connect();
