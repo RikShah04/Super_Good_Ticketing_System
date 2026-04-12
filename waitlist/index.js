@@ -1,15 +1,21 @@
+import express from 'express';
 import redis from 'redis';
+
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 const SERVICE_NAME = process.env.SERVICE_NAME || 'waitlist-worker';
 const QUEUE_NAME = process.env.QUEUE_NAME || 'waitlist-jobs';
 const DLQ_NAME = process.env.DLQ_NAME || `${QUEUE_NAME}:dlq`;
 
+
+const app = express();
+
 const client = redis.createClient({ url: REDIS_URL });
 client.on('error', (err) => {
   console.error('Redis error:', err);
 });
 await client.connect();
+
 
 const startTime = Date.now();
 let lastJobAt = null;
