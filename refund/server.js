@@ -35,7 +35,15 @@ app.get("/health", async (_req, res) =>{
     checks,
   });
 
-})
+});
+
+app.get("/seat-released", (_req, res) => {
+    res.status(200).json({
+        event: "seat-released",
+        message: "placeholder response",
+        published: false
+    });
+});
 
 await client.connect();
 
