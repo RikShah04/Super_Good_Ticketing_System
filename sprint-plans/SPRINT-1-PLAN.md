@@ -37,13 +37,16 @@ git log --author="Name" --oneline -- path/to/directory/
 ### [Ian Mei]
 
 - [ ] Write `ticket-purchase/db/schema.sql`
-- [ ] Add `healthcheck` directive to `compose.yml`
+- [ ] Query other service with synchronous call
 
 ### [Ethan Pham]
 
-- [ ] Set up `ticket-purchase/` with Express + Redis connection
-- [ ] Implement `GET /health` with Redis check
-- [ ] Implement `POST /purchase` — calls `payment` service to simulate processing
+- [ ] Set up `ticket-purchase` service with Express API
+- [ ] Set up `waitlist` worker
+- [ ] Create `ticket-purchase` `/health` endpoint with Redis, PostgreSQL check
+- [ ] Create `waitlist` `/health` endpoint with Redis check
+- [ ] Create placeholder POST `/purchase` endpoint
+- [ ] Update `compose.yml` with `ticket-purchase` service, `waitlist` worker
 
 ### [Jasper McCormack]
 
