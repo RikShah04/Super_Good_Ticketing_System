@@ -5,6 +5,7 @@ import pg from 'pg';
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 const DATABASE_URL = process.env.DATABASE_URL || 'postgres://user:pass@ticket-purchase-db:5432/ticket-purchase-db';
+const SERVICE_NAME = process.env.SERVICE_NAME || 'ticket-purchase';
 
 
 const app = express();
@@ -49,7 +50,7 @@ app.get('/health', async (req, res) => {
 
   res.status(healthy ? 200 : 503).json({
     status: healthy ? 'healthy' : 'unhealthy',
-    service: process.env.SERVICE_NAME ?? 'unknown',
+    service: SERVICE_NAME,
     timestamp: new Date().toISOString(),
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     checks,
