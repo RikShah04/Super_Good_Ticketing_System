@@ -185,9 +185,15 @@ services:
     environment:
       - PORT=3000
       - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=refund
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
         
   redis:
     image: redis:7
