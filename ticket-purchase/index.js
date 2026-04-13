@@ -59,6 +59,11 @@ app.get('/health', async (req, res) => {
   });
 });
 
+app.post('/purchase', async (req, res) => {
+  res.send(200);
+});
+
+
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
 });
