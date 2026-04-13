@@ -21,6 +21,8 @@ db.on('error', (err) => {
   console.error('Postgres error:', err);
 });
 
+const startTime = Date.now()
+
 
 app.get('/health', async (req, res) => {
   const checks = {};
