@@ -50,9 +50,9 @@ app.get('/health', async (req, res) => {
 
   // Check queue depth — flag if backlog is growing
   try {
-    const depth = await redis.lLen(process.env.QUEUE_NAME)
+    const depth = await redis.lLen(QUEUE_NAME)
     const dlqDepth = await redis.lLen(
-      process.env.DLQ_NAME ?? `${process.env.QUEUE_NAME}:dlq`
+      DLQ_NAME ?? `${QUEUE_NAME}:dlq`
     )
     checks.queue = {
       status: depth < 1000 ? 'healthy' : 'degraded',
