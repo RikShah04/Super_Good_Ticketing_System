@@ -2,7 +2,7 @@ import express from "express";
 import redis from "redis";
 
 const app = express();
-const port = Number(process.env.PORT || "3001");
+const port = Number(process.env.PORT || "3002");
 
 const redisUrl = process.env.REDIS_URL || "redis://redis:6379";
 const client = redis.createClient({ url: redisUrl })
@@ -35,15 +35,15 @@ app.get('/health', async (req, res) => {
   try {
     const pong = await client.ping()
     if (pong !== 'PONG') throw new Error(`unexpected response: ${pong}`)
-    checks.client = { status: 'healthy', latency_ms: Date.now() - redisStart }
+    checks.redis = { status: 'healthy', latency_ms: Date.now() - redisStart }
   } catch (err) {
-    checks.client = { status: 'unhealthy', error: err.message }
+    checks.redis = { status: 'unhealthy', error: err.message }
     healthy = false
   }
 
   const body = {
     status: healthy ? 'healthy' : 'unhealthy',
-    service: process.env.SERVICE_NAME ?? 'notification',
+    service: process.env.SERVICE_NAME ?? 'Notification Service',
     timestamp: new Date().toISOString(),
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     checks,
