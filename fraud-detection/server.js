@@ -8,6 +8,11 @@ const app = express()
 const redis = createClient({ url: process.env.REDIS_URL })
 await redis.connect()
 
+const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+
+const QUEUE_NAME = process.env.FRAUD_QUEUE_KEY ?? 'fraud:queue'
+const DLQ_NAME = process.env.FRAUD_DLQ_KEY ?? `${QUEUE_NAME}:dlq`
+
 const startTime = Date.now()
 let lastJobAt = null
 let jobsProcessed = 0
@@ -64,6 +69,7 @@ app.get('/health', async (req, res) => {
   const secondsSinceLastJob = lastJobAt
     ? (Date.now() - new Date(lastJobAt).getTime()) / 1000
     : null
+
   checks.worker = {
     status:
       secondsSinceLastJob === null || secondsSinceLastJob < 60
@@ -83,4 +89,26 @@ app.get('/health', async (req, res) => {
   })
 })
 
-app.listen(process.env.PORT ?? 8080)
+async function workerLoop() {
+  while (true) {
+    try {
+      const result = await redis.brPop(QUEUE_NAME, 0)
+      if (!result?.element) continue
+      
+      const job = JSON.parse(result.element)
+      console.log('[fraud-worker] processed', job.clientOrderId ?? 'unknown')
+      recordJobProcessed()
+    } catch (err) {
+      console.error('[fraud-worker] loop errpr', err.message)
+    }
+  }
+}
+
+app.listen(process.env.PORT ?? 3000, () => {
+  console.log(`[fraud-worker] listening on ${process.env.PORT ?? 3000}`)
+})
+
+workerLoop().catch(err => {
+  console.error('[fraud-worker] startup error', err)
+  process.exit(1)
+})
