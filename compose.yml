@@ -59,7 +59,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: frauddb
-      POSTRGRES_USER: fraud
+      POSTGRES_USER: fraud
       POSTGRES_PASSWORD: fraud
     volumes:
       - fraud-db-data:/var/lib/postgresql/data
@@ -93,7 +93,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-q0-", "http://localhost:3000/health"]
+      test: ["CMD-SHELL", "wget", "-qO-", "http://localhost:3000/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
