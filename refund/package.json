@@ -4,12 +4,13 @@
   "description": "refund service for ticketing system",
   "author": "",
   "type": "module",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^5.2.1",
-    "redis": "^5.8.2"
+    "redis": "^5.8.2",
+    "pg": "^8.12.0"
   }
 }
