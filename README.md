@@ -116,6 +116,92 @@ curl http://localhost:[port]/health
 
 <!-- Add the rest of your endpoints below. One ### section per endpoint. -->
 
+### Event Catalog Service
+
+### GET /events
+
+```
+GET /events
+
+  Incomplete: will return a list of events upon correct implementation. Currently, returns an empty JSON object.
+
+  Query:
+    TBD
+
+  Responses:
+    200  Success — returns empty JSON object
+```
+
+**Example request:**
+
+```bash
+curl "http://event-catalog:3005/events"
+```
+
+**Current example response (200):**
+```
+{}
+```
+
+**Goal example response (200):**
+
+```json
+{
+  "events": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "Castellan World Tour",
+      "venue": "Portland Arena",
+      "eventDate": "2025-08-15T20:00:00Z",
+      "availableSeats": 312,
+      "priceUsd": 89.99
+    },
+    {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "name": "Summer Festival",
+      "venue": "Boston Common",
+      "eventDate": "2025-07-04T18:00:00Z",
+      "availableSeats": 4200,
+      "priceUsd": 45.0
+    },
+    {
+      "id": "066de609-b04a-4b30-b46c-32537c7f1f6e",
+      "name": "Jazz Night Live",
+      "venue": "New York Jazz Center",
+      "eventDate": "2025-09-01T19:30:00Z",
+      "availableSeats": 0,
+      "priceUsd": 120.0
+    }
+  ]
+}
+```
+
+### GET /health
+
+```
+GET /health
+
+  Returns a successful response from event-catalog if healthy, including the name of the service, a status, and the time of response.
+
+  Responses:
+    200 Success - returns JSON object with healthy status and timestamp
+```
+**Example request:**
+
+```bash
+curl "http://event-catalog:3005/events"
+```
+
+**Example response:**
+
+```json
+{
+  "status": "healthy",
+  "service": "event-catalog",
+  "timestamp": "2026-04-14T13:12:49.346Z"
+}
+```
+
 ---
 
 ## Sprint History
