@@ -55,7 +55,7 @@ services:
     container_name: payment
     restart: unless-stopped
     ports:
-      - "3001:3001"          # expose on host for local testing
+      - "3003:3001"          # expose on host for local testing
     networks:
       - team-net             # REQUIRED — makes it reachable from holmes
     environment:
