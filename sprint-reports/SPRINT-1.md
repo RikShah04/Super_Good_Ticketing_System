@@ -22,7 +22,7 @@ Running `docker compose up --build` starts all services, including PostgreSQL da
 | ----------- | ------------------------------------------------------- | ---------------------- |
 | James Rust      | fraud detection worker, health endpoints, connection to redis + postgres db    | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/14#issue-4258814131 |
 | Erika Lam      | refund worker, health endpoints, connection to redis + postgres, refund db schema, seat-released stub endpoint,  |                        |
-| [Name]      | [e.g. compose.yml wiring, k6 baseline script]           |                        |
+| Rikhav Shah | notification service, connection to redis, health endpoint | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/13|
 
 Verify with:
 
