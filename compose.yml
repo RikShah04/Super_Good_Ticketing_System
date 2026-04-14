@@ -277,7 +277,7 @@ services:
     networks:
       - team-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d refund-db"]
+      test: ["CMD-SHELL", "pg_isready -U user -d refund_db"]
       interval: 5s
       timeout: 3s
       retries: 5
