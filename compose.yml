@@ -206,7 +206,10 @@ services:
       - PORT=3000
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=refund
+      - DATABASE_URL=postgres://user:pass@refund-db:5432/refund_db
     depends_on:
+      refund-db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
@@ -214,6 +217,25 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  refund-db:
+    image: postgres:16
+    container_name: refund-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: refund_db
+    volumes:
+      - refund-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d refund-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
         
   redis:
     image: redis:7
@@ -232,3 +254,4 @@ services:
 #
 volumes:
   ticket-purchase-db-data:
+  refund-db-data:

@@ -1,13 +1,20 @@
 import express from "express";
 import redis from "redis";
+import pg from "pg";
 
 const app = express();
 const port = process.env.PORT || 3000;
 const redisUrl = process.env.REDIS_URL || "redis://redis:6379";
 const SERVICE_NAME = process.env.SERVICE_NAME || 'refund';
+const DATABASE_URL = process.env.DATABASE_URL || "postgres://user:pass@refund-db:5432/refund_db";
 
 const client = redis.createClient({ url: redisUrl });
 client.on("error", (err) => console.error("Refund Redis error:", err.message));
+
+const db = new pg.Pool({ connectionString: DATABASE_URL });
+db.on('error', (err) => {
+  console.error('Postgres error:', err.message);
+});
 
 const startTime = Date.now();
 
@@ -24,6 +31,16 @@ app.get("/health", async (_req, res) =>{
     checks.redis = { status: 'healthy', latency_ms: Date.now() - redisStart };
   } catch (err) {
     checks.redis = { status: 'unhealthy', error: err.message };
+    healthy = false;
+  }
+
+  // Check PostgreSQL
+  const dbStart = Date.now();
+  try {
+    await db.query('SELECT 1');
+    checks.database = { status: 'healthy', latency_ms: Date.now() - dbStart };
+  } catch (err) {
+    checks.database = { status: 'unhealthy', error: err.message };
     healthy = false;
   }
 
