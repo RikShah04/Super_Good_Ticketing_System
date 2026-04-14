@@ -251,16 +251,15 @@ services:
     container_name: events-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: events
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: events-db
     volumes:
       - events-db-data:/var/lib/postgresql/data
-      - ./event-catalog/db/events-db-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - team-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d events-db"]
+      test: ["CMD-SHELL", "pg_isready -U user -d events-db"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -291,6 +290,7 @@ services:
       - PORT=3005
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=event-catalog
+      - DATABASE_URL=postgres://user:pass@events-db:5432/events-db
     depends_on:
       redis:
         condition: service_healthy
