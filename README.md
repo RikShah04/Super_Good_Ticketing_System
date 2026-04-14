@@ -496,6 +496,70 @@ docker compose exec holmes curl http://fraud-worker:3000/health
 }
 ```
 
+## Refund Worker
+
+### GET /health
+
+```
+GET /health
+
+   Returns the current health status of the refund worker, including:
+    - Redis connectivity
+    - database connectivity
+
+  Responses:
+    200  Service is healthy (all required dependencies reachable)
+    503  Service is unhealthy (one or more dependencies failing)
+```
+
+**Example request:**
+
+```bash
+docker compose exec holmes curl http://notification:3001/health
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "refund",
+  "timestamp": "2026-04-14T14:27:11.343Z",
+  "uptime_seconds": 175,
+  "checks": {
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 3
+    },
+    "database": {
+      "status": "healthy",
+      "latency_ms": 63
+    },
+  }
+}
+```
+
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "refund",
+  "timestamp": "2026-04-14T04:26:03.396Z",
+  "uptime_seconds": 512,
+  "checks": {
+    "redis": {
+      "status": "unhealthy",
+      "latency_ms": 3
+    },
+    "database": {
+      "status": "unhealthy",
+      "latency_ms": 63
+    },
+  }
+}
+```
+
 ---
 
 ## Sprint History
