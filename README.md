@@ -61,10 +61,9 @@ holmes                 (no port — access via exec)
 
 ## System Overview
 
-[One paragraph describing what your system does and how the services interact.
-Include which service calls which, what queues exist, and how data flows.]
+The Super Good Ticketing System is a microservice-based event ticketing platform where users can browse events, purchase tickets, and receive notifications. The system is composed of multiple services including ticket purchase, payment, notification, refund, analytics, and fraud detection.
 
-The fraud detection worker is a background service that is responsible for consuming purchase events from a Redis queue, processing each event, tracking worker activity, and reporting system health. 
+Services communicate using a combination of synchronous HTTP calls and asynchronous messaging via Redis. For example, the ticket-purchase service processes a purchase request and pushes a job to a Redis queue for downstream processing.
 
 ---
 
