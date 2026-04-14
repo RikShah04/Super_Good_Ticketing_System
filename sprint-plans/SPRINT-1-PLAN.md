@@ -52,11 +52,6 @@ git log --author="Name" --oneline -- path/to/directory/
 - [ ] Write `k6/sprint-1.js` baseline load test
 - [ ] Write `README.md` startup instructions and endpoint list
 
-### Rikhav Shah
-
-- [ ] Set up `[notification]/` with Express connection
-- [ ] Implement `GET /health` with Redis check
-- [ ] Add `healthcheck` directive to `compose.yml`
 ---
 
 ## Risks
