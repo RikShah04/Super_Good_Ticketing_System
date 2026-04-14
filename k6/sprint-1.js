@@ -18,7 +18,7 @@ const errorRate = new Rate("errors");
 // ── Configuration ─────────────────────────────────────────────────────────────
 // Update this URL to point to your main read endpoint.
 // From inside the holmes container, use the service name (not localhost).
-const TARGET_URL = "http://your-service:3000/your-endpoint";
+const TARGET_URL = "http://ticket-purchase:3000/available_events";
 
 export const options = {
   stages: [
@@ -27,7 +27,11 @@ export const options = {
     { duration: "10s", target: 0  }, // ramp down
   ],
   thresholds: {
-    http_req_duration: ["p(95)<500"], // 95% of requests under 500ms
+    http_req_duration: [
+    "p(50)<500",
+    "p(95)<500",
+    "p(99)<500"
+  ],
     errors: ["rate<0.01"],            // less than 1% error rate
   },
 };

@@ -26,7 +26,7 @@
 ## How to Start the System
 
 ```bash
-Start everything (builds images on first run)
+# Start everything (builds images on first run)
 docker compose up --build
 
 # Start with service replicas (Sprint 4)
