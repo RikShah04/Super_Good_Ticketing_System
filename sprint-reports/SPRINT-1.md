@@ -10,6 +10,10 @@
 
 [One or two paragraphs. What is running? What does `docker compose up` produce? What endpoints are live?]
 
+In Sprint 1, we implemented the foundational infrastructure for our microservice-based ticketing system. All services are containerized using Docker and orchestrated with Docker Compose on a shared network.
+
+Running `docker compose up --build` starts all services, including PostgreSQL databases, Redis, and multiple application services. Each service exposes a `/health` endpoint that reports dependency status and internal metrics.
+
 ---
 
 ## Individual Contributions
@@ -68,3 +72,11 @@ These numbers are your baseline. Sprint 2 caching should improve them measurably
 ## Blockers and Lessons Learned
 
 [What slowed you down? What would you do differently? What surprised you?]
+
+One major challenge during this sprint was debugging Docker networking and service health issues. In particular, we encountered problems with port conflicts, incorrect service names, and Redis connection blocking due to improper client usage.
+
+We learned the importance of using separate Redis clients for blocking operations (e.g., BRPOP) and non-blocking health checks. Without this separation, health endpoints could hang or fail unexpectedly.
+
+Another lesson was the importance of consistent environment variable naming between Docker Compose and application code. Mismatches caused incorrect queue monitoring behavior.
+
+Overall, careful debugging using logs and testing from the holmes container was essential in validating that services were correctly networked and functioning.
