@@ -1,5 +1,5 @@
--- create "events" table
-CREATE TABLE IF NOT EXISTS events (
+-- create "eventCatalog" table
+CREATE TABLE eventCatalog (
     id varchar(100) NOT NULL,
     name varchar(100) NOT NULL,
     venue varchar(100) NOT NULL,
