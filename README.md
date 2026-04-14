@@ -391,6 +391,90 @@ docker compose exec holmes curl http://payment:3000/health
 }
 ```
 
+## fraud-worker
+
+### GET /health
+ ```
+ GET /health
+
+   Returns the current health status of the fraud worker, including:
+    - database connectivity
+    - Redis connectivity
+    - queue depth and DLQ depth
+    - worker activity metrics (jobs processed, last job timestamp)
+
+  Responses:
+    200  Service is healthy (all required dependencies reachable)
+    503  Service is unhealthy (one or more dependencies failing)
+```
+**Example request:**
+
+```bash
+docker compose exec holmes curl http://fraud-worker:3000/health
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "fraud-worker",
+  "timestamp": "2026-04-13T21:17:13.813Z",
+  "uptime_seconds": 18,
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "latency_ms": 2
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    },
+    "queue": {
+      "status": "healthy",
+      "depth": 0,
+      "dlq_depth": 0
+    },
+    "worker": {
+      "status": "healthy",
+      "last_job_at": "never",
+      "jobs_processed": 0,
+      "seconds_since_last_job": null
+    }
+  }
+}
+```
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "fraud-worker",
+  "timestamp": "2026-04-13T21:25:42.102Z",
+  "uptime_seconds": 45,
+  "checks": {
+    "database": {
+      "status": "unhealthy",
+      "error": "connect ECONNREFUSED"
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    },
+    "queue": {
+      "status": "unhealthy",
+      "error": "Failed to read queue"
+    },
+    "worker": {
+      "status": "degraded",
+      "last_job_at": "2026-04-13T21:24:58.000Z",
+      "jobs_processed": 3,
+      "seconds_since_last_job": 44
+    }
+  }
+}
+```
+
 ---
 
 ## Sprint History
