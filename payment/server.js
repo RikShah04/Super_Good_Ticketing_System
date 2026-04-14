@@ -2,7 +2,7 @@ import express from "express";
 import pg from 'pg';
 
 const app = express();
-const port = 3001;
+const port = Number(process.env.PORT || "3000");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

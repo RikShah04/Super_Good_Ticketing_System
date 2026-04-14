@@ -55,7 +55,7 @@ services:
     container_name: payment
     restart: unless-stopped
     ports:
-      - "3001:3001"          # expose on host for local testing
+      - "3003:3003"          # expose on host for local testing
     networks:
       - team-net             # REQUIRED — makes it reachable from holmes
     environment:
@@ -64,7 +64,7 @@ services:
       payment-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
