@@ -6,5 +6,5 @@ CREATE TABLE IF NOT EXISTS events (
     eventDate DATE NOT NULL,
     availableSeats int NOT NULL,
     priceUsd DECIMAL(10. 2) NULL,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (id)
 );
