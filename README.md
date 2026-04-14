@@ -48,6 +48,12 @@ docker compose exec holmes bash
 fraud-worker   http://localhost:3000 (from holmes)
 ticket-purchase    http://ticket-purchase:3000 (from holmes)
 payment    http://payment:3000 (from holmes)
+refund    http://refund:3001 (from holmes)
+analytics    http://analytics:3000 (from holmes)
+notification   http://notification:3000 (from holmes)
+event-catalog   http://localhost:3005 (from holmes)
+waitlist    http://waitlist:3000 (from holmes)
+
 [worker-name]          http://localhost:[port]   (health endpoint only)
 holmes                 (no port — access via exec)
 ```
