@@ -279,6 +279,27 @@ services:
       timeout: 3s
       retries: 5
 
+  event-catalog:
+    build: ./event-catalog
+    container_name: event-catalog
+    restart: unless-stopped
+    ports:
+      - "3005:3005"
+    networks:
+      - team-net
+    environment:
+      - PORT=3005
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=event-catalog
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      
   ticket-purchase:
     build: ./ticket-purchase
     container_name: ticket-purchase
