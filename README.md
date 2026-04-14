@@ -47,6 +47,7 @@ docker compose exec holmes bash
 ```
 fraud-worker   http://localhost:3000 (from holmes)
 ticket-purchase    http://ticket-purchase:3000 (from holmes)
+payment    http://payment:3000 (from holmes)
 [worker-name]          http://localhost:[port]   (health endpoint only)
 holmes                 (no port — access via exec)
 ```
