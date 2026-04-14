@@ -24,6 +24,7 @@ Running `docker compose up --build` starts all services, including PostgreSQL da
 | Jonathan Zhang | analytics worker setup, health endpoint, db setup, compose | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/19 |
 | Henry Branham | payment service, /health, postgres setup | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/21, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/22 |
 | Ethan Pham | ticket-purchase service, waitlist worker, /health endpoints, postgres setup, redis setup | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/4, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/6 |
+| Ian Mei | ticket-purchase event db schema, bug fix with initializing redis | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/17, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/16 |
 
 Verify with:
 
