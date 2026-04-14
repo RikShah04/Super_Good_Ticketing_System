@@ -45,7 +45,7 @@ docker compose exec holmes bash
 ### Base URLs (development)
 
 ```
-fraud-worker   http://localhost:3000
+fraud-worker   http://localhost:3000 (from holmes)
 [your-service-name]    http://localhost:[port]
 [worker-name]          http://localhost:[port]   (health endpoint only)
 holmes                 (no port — access via exec)
@@ -120,7 +120,7 @@ curl http://localhost:[port]/health
 
 <!-- Add the rest of your endpoints below. One ### section per endpoint. -->
 
-### fraud-worker
+## fraud-worker
 
 ### GET /health
  ```
