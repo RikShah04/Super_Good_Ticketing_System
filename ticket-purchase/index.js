@@ -70,7 +70,7 @@ app.listen(3000, () => {
 
 const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog:3005';
 
-app.post('/available_events', async (req, res) => {
+app.get('/available_events', async (req, res) => {
   const response = await fetch(`${EVENT_CATALOG_URL}/events`);
   const events = await response.json();
   res.json(events);
