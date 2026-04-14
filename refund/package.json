@@ -1,0 +1,16 @@
+{
+  "name": "refund-service",
+  "version": "1.0.0",
+  "description": "refund service for ticketing system",
+  "author": "",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "redis": "^5.8.2",
+    "pg": "^8.12.0"
+  }
+}

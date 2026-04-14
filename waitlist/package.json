@@ -1,0 +1,10 @@
+{
+  "name": "super_good_ticketing_system-waitlist",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "express": "^4.18.2",
+    "redis": "^5.11.0"
+  }
+}
