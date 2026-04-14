@@ -278,6 +278,61 @@ curl "http://event-catalog:3005/health"
 }
 ```
 
+## Notification Service
+
+### GET /health
+
+```
+GET /health
+
+   Returns the current health status of the notification service, including:
+    - Redis connectivity
+
+  Responses:
+    200  Service is healthy (all required dependencies reachable)
+    503  Service is unhealthy (one or more dependencies failing)
+```
+
+**Example request:**
+
+```bash
+docker compose exec holmes curl http://notification:3000/health
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "Notification Service",
+  "timestamp": "2026-04-14T04:26:03.396Z",
+  "uptime_seconds": 512,
+  "checks": {
+    "redis": {
+    "status": "healthy",
+    "latency_ms": 5
+    }
+  }
+}
+```
+
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "Notification Service",
+  "timestamp": "2026-04-14T04:26:03.396Z",
+  "uptime_seconds": 512,
+  "checks": {
+    "redis": {
+    "status": "unhealthy",
+    "error": "connection refused"
+    }
+  }
+}
+```
+
 ---
 
 ## Sprint History
