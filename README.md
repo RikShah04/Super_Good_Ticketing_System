@@ -114,6 +114,78 @@ curl http://localhost:[port]/health
 
 ---
 
+### Analytics Worker (analytics)
+
+### GET /health
+
+```
+GET /health
+
+  Returns analytics worker health and dependency checks.
+  Checks Postgres and Redis as required checks.
+  Also reports queue depth and worker activity as degraded/healthy signals.
+
+  Responses:
+    200  Required dependencies are healthy
+    503  One or more required dependencies are unreachable
+```
+
+**Example request:**
+
+```bash
+# from inside holmes or another service container
+curl -s http://analytics:3000/health | jq .
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "analytics-worker",
+  "timestamp": "2026-04-14T20:00:00.000Z",
+  "uptime_seconds": 123,
+  "checks": {
+    "database": { "status": "healthy", "latency_ms": 4 },
+    "redis": { "status": "healthy", "latency_ms": 2 },
+    "queue": { "status": "healthy", "depth": 0, "dlq_depth": 0 },
+    "worker": {
+      "status": "healthy",
+      "last_job_at": "never",
+      "jobs_processed": 0,
+      "seconds_since_last_job": null
+    }
+  }
+}
+```
+
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "analytics-worker",
+  "timestamp": "2026-04-14T20:00:05.000Z",
+  "uptime_seconds": 128,
+  "checks": {
+    "database": {
+      "status": "unhealthy",
+      "error": "connect ECONNREFUSED analytics-db:5432"
+    },
+    "redis": { "status": "healthy", "latency_ms": 2 },
+    "queue": { "status": "unhealthy", "error": "The client is closed" },
+    "worker": {
+      "status": "healthy",
+      "last_job_at": "never",
+      "jobs_processed": 0,
+      "seconds_since_last_job": null
+    }
+  }
+}
+```
+
+---
+
 <!-- Add the rest of your endpoints below. One ### section per endpoint. -->
 
 ### Event Catalog Service

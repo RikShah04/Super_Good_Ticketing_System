@@ -2,7 +2,7 @@ import express from "express";
 import redis from "redis";
 
 const app = express();
-const port = Number(process.env.PORT || "3002");
+const port = Number(process.env.PORT || "3000");
 
 const redisUrl = process.env.REDIS_URL || "redis://redis:6379";
 const client = redis.createClient({ url: redisUrl })

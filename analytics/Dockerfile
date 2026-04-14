@@ -1,7 +1,7 @@
-FROM node:25-alpine
-WORKDIR /notification
+FROM node:22-alpine
+WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci --omit=dev
 COPY . .
 EXPOSE 3000
 CMD ["npm", "start"]
