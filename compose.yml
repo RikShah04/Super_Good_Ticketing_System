@@ -255,7 +255,7 @@ services:
       POSTGRES_PASSWORD: secret
       POSTGRES_DB: events
     volumes:
-      - events_data:/var/lib/postgresql/data
+      - events-db-data:/var/lib/postgresql/data
       - ./event-catalog/db/events-db-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - team-net
@@ -396,3 +396,4 @@ volumes:
   analytics-db-data:
   ticket-purchase-db-data:
   refund-db-data:
+  events-db-data:
