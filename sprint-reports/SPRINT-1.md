@@ -17,7 +17,7 @@
 | Team Member | What They Delivered                                     | Key Commits            |
 | ----------- | ------------------------------------------------------- | ---------------------- |
 | James Rust      | fraud detection worker, health endpoints, connection to redis + postgres db    | [short SHA or PR link] |
-| [Name]      | [e.g. restaurant-service, synchronous call integration] |                        |
+| Erika Lam      | refund worker, health endpoints, connection to redis + postgres, refund db schema, seat-released stub endpoint,  |                        |
 | [Name]      | [e.g. compose.yml wiring, k6 baseline script]           |                        |
 
 Verify with:
