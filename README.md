@@ -16,7 +16,7 @@
 | Henry Branham | `payment/`, `k6/` |
 | Rikhav Shah | `notification/` |
 | Erika Lam | `refund/`, `refund/db/schema.sql` |
-| James Rust | `fraud-detection/`, `fraud-detection/db/schema.sql` |
+| James Rust | `fraud-detection/` |
 | Jonathan Zhang | `analytics/`, `analytics/db/schema.sql` |
 
 > Ownership is verified by `git log --author`. Each person must have meaningful commits in the directories they claim.
@@ -45,7 +45,7 @@ docker compose exec holmes bash
 ### Base URLs (development)
 
 ```
-[your-service-name]    http://localhost:[port]
+fraud-worker   http://localhost:3000 (from holmes)
 [your-service-name]    http://localhost:[port]
 [worker-name]          http://localhost:[port]   (health endpoint only)
 holmes                 (no port — access via exec)
@@ -62,6 +62,8 @@ holmes                 (no port — access via exec)
 
 [One paragraph describing what your system does and how the services interact.
 Include which service calls which, what queues exist, and how data flows.]
+
+The fraud detection worker is a background service that is responsible for consuming purchase events from a Redis queue, processing each event, tracking worker activity, and reporting system health. 
 
 ---
 
