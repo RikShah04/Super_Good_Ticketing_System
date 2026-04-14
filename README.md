@@ -118,28 +118,27 @@ curl http://localhost:[port]/health
 
 ---
 
-<!-- Add the rest of your endpoints below. One ### section per endpoint. -->
-
-## fraud-worker
+### Analytics Worker (analytics)
 
 ### GET /health
- ```
- GET /health
 
-   Returns the current health status of the fraud worker, including:
-    - database connectivity
-    - Redis connectivity
-    - queue depth and DLQ depth
-    - worker activity metrics (jobs processed, last job timestamp)
+```
+GET /health
+
+  Returns analytics worker health and dependency checks.
+  Checks Postgres and Redis as required checks.
+  Also reports queue depth and worker activity as degraded/healthy signals.
 
   Responses:
-    200  Service is healthy (all required dependencies reachable)
-    503  Service is unhealthy (one or more dependencies failing)
+    200  Required dependencies are healthy
+    503  One or more required dependencies are unreachable
 ```
+
 **Example request:**
 
 ```bash
-docker compose exec holmes curl http://fraud-worker:3000/health
+# from inside holmes or another service container
+curl -s http://analytics:3000/health | jq .
 ```
 
 **Example response (200):**
@@ -147,23 +146,13 @@ docker compose exec holmes curl http://fraud-worker:3000/health
 ```json
 {
   "status": "healthy",
-  "service": "fraud-worker",
-  "timestamp": "2026-04-13T21:17:13.813Z",
-  "uptime_seconds": 18,
+  "service": "analytics-worker",
+  "timestamp": "2026-04-14T20:00:00.000Z",
+  "uptime_seconds": 123,
   "checks": {
-    "database": {
-      "status": "healthy",
-      "latency_ms": 2
-    },
-    "redis": {
-      "status": "healthy",
-      "latency_ms": 1
-    },
-    "queue": {
-      "status": "healthy",
-      "depth": 0,
-      "dlq_depth": 0
-    },
+    "database": { "status": "healthy", "latency_ms": 4 },
+    "redis": { "status": "healthy", "latency_ms": 2 },
+    "queue": { "status": "healthy", "depth": 0, "dlq_depth": 0 },
     "worker": {
       "status": "healthy",
       "last_job_at": "never",
@@ -173,87 +162,27 @@ docker compose exec holmes curl http://fraud-worker:3000/health
   }
 }
 ```
+
 **Example response (503):**
 
 ```json
 {
   "status": "unhealthy",
-  "service": "fraud-worker",
-  "timestamp": "2026-04-13T21:25:42.102Z",
-  "uptime_seconds": 45,
+  "service": "analytics-worker",
+  "timestamp": "2026-04-14T20:00:05.000Z",
+  "uptime_seconds": 128,
   "checks": {
     "database": {
       "status": "unhealthy",
-      "error": "connect ECONNREFUSED"
+      "error": "connect ECONNREFUSED analytics-db:5432"
     },
-    "redis": {
-      "status": "healthy",
-      "latency_ms": 1
-    },
-    "queue": {
-      "status": "unhealthy",
-      "error": "Failed to read queue"
-    },
+    "redis": { "status": "healthy", "latency_ms": 2 },
+    "queue": { "status": "unhealthy", "error": "The client is closed" },
     "worker": {
-      "status": "degraded",
-      "last_job_at": "2026-04-13T21:24:58.000Z",
-      "jobs_processed": 3,
-      "seconds_since_last_job": 44
-    }
-  }
-}
-```
-
-### Notification Service
-
-### GET /health
-
-```
-GET /health
-
-   Returns the current health status of the notification service, including:
-    - Redis connectivity
-
-  Responses:
-    200  Service is healthy (all required dependencies reachable)
-    503  Service is unhealthy (one or more dependencies failing)
-```
-
-**Example request:**
-
-```bash
-docker compose exec holmes curl http://notification:3000/health
-```
-
-**Example response (200):**
-
-```json
-{
-  "status": "healthy",
-  "service": "Notification Service",
-  "timestamp": "2026-04-14T04:26:03.396Z",
-  "uptime_seconds": 512,
-  "checks": {
-    "redis": {
-    "status": "healthy",
-    "latency_ms": 5
-    }
-  }
-}
-```
-
-**Example response (503):**
-
-```json
-{
-  "status": "unhealthy",
-  "service": "Notification Service",
-  "timestamp": "2026-04-14T04:26:03.396Z",
-  "uptime_seconds": 512,
-  "checks": {
-    "redis": {
-    "status": "unhealthy",
-    "error": "connection refused"
+      "status": "healthy",
+      "last_job_at": "never",
+      "jobs_processed": 0,
+      "seconds_since_last_job": null
     }
   }
 }
@@ -261,58 +190,91 @@ docker compose exec holmes curl http://notification:3000/health
 
 ---
 
-### Payment Service
+<!-- Add the rest of your endpoints below. One ### section per endpoint. -->
+
+### Event Catalog Service
+
+### GET /events
+
+```
+GET /events
+
+  Incomplete: will return a list of events upon correct implementation. Currently, returns an empty JSON object.
+
+  Query:
+    TBD
+
+  Responses:
+    200  Success — returns empty JSON object
+```
+
+**Example request:**
+
+```bash
+curl "http://event-catalog:3005/events"
+```
+
+**Current example response (200):**
+```
+{}
+```
+
+**Goal example response (200):**
+
+```json
+{
+  "events": [
+    {
+      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "name": "Castellan World Tour",
+      "venue": "Portland Arena",
+      "eventDate": "2025-08-15T20:00:00Z",
+      "availableSeats": 312,
+      "priceUsd": 89.99
+    },
+    {
+      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+      "name": "Summer Festival",
+      "venue": "Boston Common",
+      "eventDate": "2025-07-04T18:00:00Z",
+      "availableSeats": 4200,
+      "priceUsd": 45.0
+    },
+    {
+      "id": "066de609-b04a-4b30-b46c-32537c7f1f6e",
+      "name": "Jazz Night Live",
+      "venue": "New York Jazz Center",
+      "eventDate": "2025-09-01T19:30:00Z",
+      "availableSeats": 0,
+      "priceUsd": 120.0
+    }
+  ]
+}
+```
 
 ### GET /health
 
 ```
 GET /health
 
-   Returns the current health status of the payment service, including:
-    - Postgres connectivity
+  Returns a successful response from event-catalog if healthy, including the name of the service, a status, and the time of response.
 
   Responses:
-    200  Service is healthy (all required dependencies reachable)
-    503  Service is unhealthy (one or more dependencies failing)
+    200 Success - returns JSON object with healthy status and timestamp
 ```
-
 **Example request:**
 
 ```bash
-docker compose exec holmes curl http://payment:3000/health
+curl "http://event-catalog:3005/health"
 ```
 
-**Example response (200):**
+**Example response:**
 
 ```json
 {
   "status": "healthy",
-  "service": "payments",
-  "timestamp": "2026-04-14T04:27:03.050Z",
-  "uptime_seconds": 12,
-  "checks": {
-    "database": {
-      "status": "healthy",
-      "latency_ms": 2
-    }
-  }
-}
-```
-
-**Example response (503):**
-
-```json
-{
-  "status": "unhealthy",
-  "service": "payments",
-  "timestamp": "2026-04-14T04:27:03.050Z",
-  "uptime_seconds": 20,
-  "checks": {
-    "payment-db": {
-    "status": "unhealthy",
-    "error": "connection refused"
-    }
-  }
+  "service": "event-catalog",
+  "timestamp": "2026-04-14T13:12:49.346Z"
 }
 ```
 

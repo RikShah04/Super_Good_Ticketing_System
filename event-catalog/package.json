@@ -1,0 +1,17 @@
+{
+  "name": "event-catalog-service",
+  "version": "1.0.0",
+  "description": "API service that manages event listings, venues, dates, and seat maps.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Jasper McCormack",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "redis": "^5.8.2",
+    "pg": "^8.12.0"
+  }
+}
