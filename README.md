@@ -45,7 +45,8 @@ docker compose exec holmes bash
 ### Base URLs (development)
 
 ```
-fraud-worker   http://localhost:3000 (from holmes)
+fraud-worker   http://fraud-worker:3000 (from holmes)
+notification   http://notification:3000 (from holmes)
 [your-service-name]    http://localhost:[port]
 [worker-name]          http://localhost:[port]   (health endpoint only)
 holmes                 (no port — access via exec)
