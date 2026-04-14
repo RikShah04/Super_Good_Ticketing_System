@@ -128,7 +128,7 @@ services:
     container_name: notification
     restart: unless-stopped
     ports:
-      - "3002:3002"          # expose on host for local testing
+      - "3002:3000"          # expose on host for local testing
     networks:
       - team-net             # REQUIRED — makes it reachable from holmes
     environment:
@@ -137,7 +137,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
