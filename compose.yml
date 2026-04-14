@@ -77,6 +77,26 @@ services:
   #     retries: 3
   #     start_period: 15s
   #
+  notification:
+    build: ./notification
+    container_name: notification
+    restart: unless-stopped
+    ports:
+      - "3002:3002"          # expose on host for local testing
+    networks:
+      - team-net             # REQUIRED — makes it reachable from holmes
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   # ── Postgres template ──────────────────────────────────────────────────────
   #
   # postgres:
@@ -99,20 +119,116 @@ services:
   #
   # ── Redis template ─────────────────────────────────────────────────────────
   #
-  # redis:
-  #   image: redis:7
-  #   container_name: redis
-  #   restart: unless-stopped
-  #   networks:
-  #     - team-net
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 5s
-  #     timeout: 3s
-  #     retries: 5
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: unless-stopped
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  ticket-purchase:
+    build: ./ticket-purchase
+    container_name: ticket-purchase
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - team-net
+    environment:
+      - DATABASE_URL=postgres://user:pass@ticket-purchase-db:5432/ticket-purchase-db
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=ticket-purchase
+    depends_on:
+      ticket-purchase-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  waitlist:
+    build: ./waitlist
+    container_name: waitlist
+    restart: unless-stopped
+    networks:
+      - team-net
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=waitlist-worker
+      - QUEUE_NAME=waitlist-jobs
+      - DLQ_NAME=waitlist-jobs:dlq
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  ticket-purchase-db:
+    image: postgres:16
+    container_name: ticket-purchase-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: ticket-purchase-db
+    volumes:
+      - ticket-purchase-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d ticket-purchase-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  refund: 
+    build: ./refund
+    container_name: refund
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    networks:
+      - team-net
+    environment:
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=refund
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+        
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: unless-stopped
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
 #
-# volumes:
-#   postgres-data:
+volumes:
+  ticket-purchase-db-data:
