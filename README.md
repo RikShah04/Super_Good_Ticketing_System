@@ -16,7 +16,7 @@
 | Henry Branham | `payment/`, `k6/` |
 | Rikhav Shah | `notification/` |
 | Erika Lam | `refund/`, `refund/db/schema.sql` |
-| James Rust | `fraud-detection/`, `fraud-detection/db/schema.sql` |
+| James Rust | `fraud-detection/` |
 | Jonathan Zhang | `analytics/`, `analytics/db/schema.sql` |
 
 > Ownership is verified by `git log --author`. Each person must have meaningful commits in the directories they claim.
@@ -26,7 +26,7 @@
 ## How to Start the System
 
 ```bash
-# Start everything (builds images on first run)
+Start everything (builds images on first run)
 docker compose up --build
 
 # Start with service replicas (Sprint 4)
@@ -45,7 +45,7 @@ docker compose exec holmes bash
 ### Base URLs (development)
 
 ```
-[your-service-name]    http://localhost:[port]
+fraud-worker   http://localhost:3000
 [your-service-name]    http://localhost:[port]
 [worker-name]          http://localhost:[port]   (health endpoint only)
 holmes                 (no port — access via exec)
@@ -62,6 +62,8 @@ holmes                 (no port — access via exec)
 
 [One paragraph describing what your system does and how the services interact.
 Include which service calls which, what queues exist, and how data flows.]
+
+The fraud detection worker is a background service that is responsible for consuming purchase events from a Redis queue, processing each event, tracking worker activity, and reporting system health. 
 
 ---
 
@@ -117,6 +119,90 @@ curl http://localhost:[port]/health
 ---
 
 <!-- Add the rest of your endpoints below. One ### section per endpoint. -->
+
+### fraud-worker
+
+### GET /health
+ ```
+ GET /health
+
+   Returns the current health status of the fraud worker, including:
+    - database connectivity
+    - Redis connectivity
+    - queue depth and DLQ depth
+    - worker activity metrics (jobs processed, last job timestamp)
+
+  Responses:
+    200  Service is healthy (all required dependencies reachable)
+    503  Service is unhealthy (one or more dependencies failing)
+```
+**Example request:**
+
+```bash
+docker compose exec holmes curl http://fraud-worker:3000/health
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "fraud-worker",
+  "timestamp": "2026-04-13T21:17:13.813Z",
+  "uptime_seconds": 18,
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "latency_ms": 2
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    },
+    "queue": {
+      "status": "healthy",
+      "depth": 0,
+      "dlq_depth": 0
+    },
+    "worker": {
+      "status": "healthy",
+      "last_job_at": "never",
+      "jobs_processed": 0,
+      "seconds_since_last_job": null
+    }
+  }
+}
+```
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "fraud-worker",
+  "timestamp": "2026-04-13T21:25:42.102Z",
+  "uptime_seconds": 45,
+  "checks": {
+    "database": {
+      "status": "unhealthy",
+      "error": "connect ECONNREFUSED"
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    },
+    "queue": {
+      "status": "unhealthy",
+      "error": "Failed to read queue"
+    },
+    "worker": {
+      "status": "degraded",
+      "last_job_at": "2026-04-13T21:24:58.000Z",
+      "jobs_processed": 3,
+      "seconds_since_last_job": 44
+    }
+  }
+}
+```
 
 ---
 
