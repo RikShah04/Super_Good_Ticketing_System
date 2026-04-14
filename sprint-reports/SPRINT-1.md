@@ -45,7 +45,7 @@ git log --author="Name" --oneline -- path/to/directory/
 
 ## What Is Not Working / Cut
 
-[Be honest. What did you not finish? What did you cut from the sprint plan and why? How will you address it in Sprint 2?]
+We were unable to get to k6 testing because our main read endpoint was finished too late (see incomplete table below). Moving foward, we want to work on contributing in a timely manner so that tasks that depend on others are not also pushed back. We will communicate more openly and proactively with each other to ensure that each person is aware of what tasks they have to accomplish and what other work depends on theirs.
 
 ---
 
@@ -55,16 +55,16 @@ Script: `k6/sprint-1.js`
 Run: `docker compose exec holmes k6 run /workspace/k6/sprint-1.js`
 
 ```
-[Paste the k6 summary output here]
+<no k6 results to display>
 ```
 
 | Metric             | Value |
 | ------------------ | ----- |
-| p50 response time  |       |
-| p95 response time  |       |
-| p99 response time  |       |
-| Requests/sec (avg) |       |
-| Error rate         |       |
+| p50 response time  |   -   |
+| p95 response time  |   -   |
+| p99 response time  |   -   |
+| Requests/sec (avg) |   -   |
+| Error rate         |   -   |
 
 These numbers are your baseline. Sprint 2 caching should improve them measurably.
 
