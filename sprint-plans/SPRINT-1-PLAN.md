@@ -64,8 +64,7 @@ git log --author="Name" --oneline -- path/to/directory/
 ### [Rikhav Shah]
 
 - [ ] Set up `[service]/` with Express + Postgres connection
-- [ ] Implement `GET /health` with DB check
-- [ ] Write `db/schema.sql` and seed script
+- [ ] Implement `GET /health` with Redis check
 - [ ] Add `healthcheck` directive to `compose.yml`
 
 ### [Erika Lam]
