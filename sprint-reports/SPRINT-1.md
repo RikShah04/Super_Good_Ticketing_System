@@ -1,4 +1,4 @@
-# Sprint 1 Report — [Team Name]
+# Sprint 1 Report — Super_Good_Ticketing_System
 
 **Sprint:** 1 — Foundation  
 **Tag:** `sprint-1`  
@@ -16,7 +16,7 @@
 
 | Team Member | What They Delivered                                     | Key Commits            |
 | ----------- | ------------------------------------------------------- | ---------------------- |
-| [Name]      | [e.g. order-service with DB schema, health endpoint]    | [short SHA or PR link] |
+| James Rust      | fraud detection worker, health endpoints, connection to redis + postgres db    | [short SHA or PR link] |
 | [Name]      | [e.g. restaurant-service, synchronous call integration] |                        |
 | [Name]      | [e.g. compose.yml wiring, k6 baseline script]           |                        |
 
