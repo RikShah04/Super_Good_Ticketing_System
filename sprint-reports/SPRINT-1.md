@@ -2,13 +2,11 @@
 
 **Sprint:** 1 — Foundation  
 **Tag:** `sprint-1`  
-**Submitted:** [date, before 04.14 class]
+**Submitted:** 04/14/26
 
 ---
 
 ## What We Built
-
-[One or two paragraphs. What is running? What does `docker compose up` produce? What endpoints are live?]
 
 In Sprint 1, we implemented the foundational infrastructure for our microservice-based ticketing system. All services are containerized using Docker and orchestrated with Docker Compose on a shared network.
 
@@ -25,6 +23,7 @@ Running `docker compose up --build` starts all services, including PostgreSQL da
 | Rikhav Shah | notification service, connection to redis, health endpoint | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/13|
 | Jonathan Zhang | analytics worker setup, health endpoint, db setup, compose | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/19 |
 | Henry Branham | payment service, /health, postgres setup | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/21, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/22 |
+| Ethan Pham | ticket-purchase service, waitlist worker, /health endpoints, postgres setup, redis setup | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/4, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/6 |
 
 Verify with:
 
@@ -72,8 +71,6 @@ These numbers are your baseline. Sprint 2 caching should improve them measurably
 ---
 
 ## Blockers and Lessons Learned
-
-[What slowed you down? What would you do differently? What surprised you?]
 
 One major challenge during this sprint was debugging Docker networking and service health issues. In particular, we encountered problems with port conflicts, incorrect service names, and Redis connection blocking due to improper client usage.
 
