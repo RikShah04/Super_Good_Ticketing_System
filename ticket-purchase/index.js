@@ -67,3 +67,11 @@ app.post('/purchase', async (req, res) => {
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
 });
+
+const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog:3005';
+
+app.post('/available_events', async (req, res) => {
+  const response = await fetch(`${EVENT_CATALOG_URL}/events`);
+  const events = await response.json();
+  res.json(events);
+});
