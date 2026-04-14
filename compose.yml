@@ -97,6 +97,27 @@ services:
   #     timeout: 3s
   #     retries: 5
   #
+  # ── Events DB ───────────────────────────────────────────────────────────────
+  
+    events-db:
+      image: postgres:16
+      container_name: events-db
+      restart: unless-stopped
+      environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: secret
+        POSTGRES_DB: events
+      volumes:
+        - postgres-data:/var/lib/postgresql/data
+        - ./event-catalog/db/events-db-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      networks:
+        - team-net
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U user -d mydb"]
+        interval: 5s
+        timeout: 3s
+        retries: 5
+  
   # ── Redis template ─────────────────────────────────────────────────────────
   #
   # redis:
