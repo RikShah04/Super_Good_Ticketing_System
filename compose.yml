@@ -50,8 +50,135 @@ services:
       - TERM=xterm-256color
     # Holmes has no ports — access it via: docker compose exec holmes bash
 
+  payment:
+    build: ./payment
+    container_name: payment
+    restart: unless-stopped
+    ports:
+      - "3003:3001"          # expose on host for local testing
+    networks:
+      - team-net             # REQUIRED — makes it reachable from holmes
+    environment:
+      - DATABASE_URL=postgres://admin:supersecurepassword123@payment-db:5432/payments
+    depends_on:
+      payment-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  payment-db:
+    image: postgres:16
+    container_name: payment-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: supersecurepassword123
+      POSTGRES_DB: payments
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d payments"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   # ── Add your services here ─────────────────────────────────────────────────
   #
+
+  fraud-db:
+    image: postgres:16-alpine
+    container_name: fraud-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: frauddb
+      POSTGRES_USER: fraud
+      POSTGRES_PASSWORD: fraud
+    volumes:
+      - fraud-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraud -d frauddb"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+  
+  fraud-worker:
+    build: ./fraud-detection
+    container_name: fraud-worker
+    restart: unless-stopped
+    networks:
+      - team-net
+    environment:
+      - PORT=3000
+      - SERVICE_NAME=fraud-worker
+      - DATABASE_URL=postgres://fraud:fraud@fraud-db:5432/frauddb
+      - REDIS_URL=redis://redis:6379
+      - FRAUD_QUEUE_KEY=fraud:queue
+      - FRAUD_DLQ_KEY=fraud:dlq
+      - FRAUD_FLAGGED_CHANNEL=fraud:flagged
+    depends_on:
+      fraud-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  analytics-db:
+    image: postgres:16-alpine
+    container_name: analytics-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: analytics_db
+      POSTGRES_USER: analytics
+      POSTGRES_PASSWORD: analytics
+    volumes:
+      - analytics-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analytics -d analytics_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  analytics:
+    build: ./analytics
+    container_name: analytics
+    restart: unless-stopped
+    networks:
+      - team-net
+    environment:
+      - PORT=3000
+      - SERVICE_NAME=analytics-worker
+      - DATABASE_URL=postgres://analytics:analytics@analytics-db:5432/analytics_db
+      - REDIS_URL=redis://redis:6379
+      - QUEUE_NAME=analytics:queue
+      - DLQ_NAME=analytics:dlq
+    depends_on:
+      analytics-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    
+
   # Pattern for each service:
   #
   # your-service:
@@ -82,7 +209,7 @@ services:
     container_name: notification
     restart: unless-stopped
     ports:
-      - "3002:3002"          # expose on host for local testing
+      - "3002:3000"          # expose on host for local testing
     networks:
       - team-net             # REQUIRED — makes it reachable from holmes
     environment:
@@ -91,7 +218,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -152,10 +279,120 @@ services:
       timeout: 3s
       retries: 5
 
+  ticket-purchase:
+    build: ./ticket-purchase
+    container_name: ticket-purchase
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - team-net
+    environment:
+      - DATABASE_URL=postgres://user:pass@ticket-purchase-db:5432/ticket-purchase-db
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=ticket-purchase
+    depends_on:
+      ticket-purchase-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  waitlist:
+    build: ./waitlist
+    container_name: waitlist
+    restart: unless-stopped
+    networks:
+      - team-net
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=waitlist-worker
+      - QUEUE_NAME=waitlist-jobs
+      - DLQ_NAME=waitlist-jobs:dlq
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  ticket-purchase-db:
+    image: postgres:16
+    container_name: ticket-purchase-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: ticket-purchase-db
+    volumes:
+      - ticket-purchase-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d ticket-purchase-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  refund: 
+    build: ./refund
+    container_name: refund
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    networks:
+      - team-net
+    environment:
+      - PORT=3000
+      - REDIS_URL=redis://redis:6379
+      - SERVICE_NAME=refund
+      - DATABASE_URL=postgres://user:pass@refund-db:5432/refund_db
+    depends_on:
+      refund-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  refund-db:
+    image: postgres:16
+    container_name: refund-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: refund_db
+    volumes:
+      - refund-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d refund_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
 #
 # volumes:
 #   postgres-data:
 volumes:
-  events_data:
+  payment-db-data:
+  fraud-db-data:
+  analytics-db-data:
+  ticket-purchase-db-data:
+  refund-db-data:
