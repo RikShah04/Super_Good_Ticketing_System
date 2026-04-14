@@ -1,0 +1,14 @@
+{
+  "name": "notification",
+  "version": "1.0.0",
+  "description": "Notification Service",
+  "type": "module",
+  "main": "notification.js",
+  "scripts": {
+    "start": "node notification.js"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "redis": "^5.8.2"
+  }
+}
