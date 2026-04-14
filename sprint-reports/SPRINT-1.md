@@ -21,7 +21,7 @@ Running `docker compose up --build` starts all services, including PostgreSQL da
 | Team Member | What They Delivered                                     | Key Commits            |
 | ----------- | ------------------------------------------------------- | ---------------------- |
 | James Rust      | fraud detection worker, health endpoints, connection to redis + postgres db    | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/14#issue-4258814131 |
-| Erika Lam      | refund worker, health endpoints, connection to redis + postgres, refund db schema, seat-released stub endpoint,  |                        |
+| Erika Lam      | refund worker, health endpoints, connection to redis + postgres, refund db schema, seat-released stub endpoint,  |  https://github.com/RikShah04/Super_Good_Ticketing_System/pull/11 |
 | Rikhav Shah | notification service, connection to redis, health endpoint | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/13|
 | Jonathan Zhang | analytics worker setup, health endpoint, db setup, compose | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/19 |
 | Henry Branham | payment service, /health, postgres setup | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/21, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/22 |

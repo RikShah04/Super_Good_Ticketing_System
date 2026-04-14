@@ -73,7 +73,6 @@ git log --author="Name" --oneline -- path/to/directory/
 - [ ] Implement `GET /health` with Redis check
 - [ ] Implement `GET /seat-released` — stub returning placeholder data
 - [ ] Add `healthcheck` directive to `compose.yml`
-- [ ] Test synchronous call to Ticket Purchase Service
 - [ ] Write `refund/db/schema.sql`
 
 ### [James Rust]
