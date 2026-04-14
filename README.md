@@ -335,6 +335,63 @@ docker compose exec holmes curl http://notification:3000/health
 
 ---
 
+### Payment Service
+
+### GET /health
+
+```
+GET /health
+
+   Returns the current health status of the payment service, including:
+    - Postgres connectivity
+
+  Responses:
+    200  Service is healthy (all required dependencies reachable)
+    503  Service is unhealthy (one or more dependencies failing)
+```
+
+**Example request:**
+
+```bash
+docker compose exec holmes curl http://payment:3000/health
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "payments",
+  "timestamp": "2026-04-14T04:27:03.050Z",
+  "uptime_seconds": 12,
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "latency_ms": 2
+    }
+  }
+}
+```
+
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "payments",
+  "timestamp": "2026-04-14T04:27:03.050Z",
+  "uptime_seconds": 20,
+  "checks": {
+    "payment-db": {
+    "status": "unhealthy",
+    "error": "connection refused"
+    }
+  }
+}
+```
+
+---
+
 ## Sprint History
 
 | Sprint | Tag        | Plan                                              | Report                                    |
