@@ -282,18 +282,6 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-        
-  redis:
-    image: redis:7
-    container_name: redis
-    restart: unless-stopped
-    networks:
-      - team-net
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
 
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
