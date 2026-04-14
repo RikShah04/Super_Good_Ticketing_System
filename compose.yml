@@ -302,7 +302,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -320,7 +320,7 @@ services:
     networks:
       - team-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d refund-db"]
+      test: ["CMD-SHELL", "pg_isready -U user -d refund_db"]
       interval: 5s
       timeout: 3s
       retries: 5
