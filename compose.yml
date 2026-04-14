@@ -77,6 +77,26 @@ services:
   #     retries: 3
   #     start_period: 15s
   #
+  notification:
+    build: ./notification
+    container_name: notification
+    restart: unless-stopped
+    ports:
+      - "3002:3002"          # expose on host for local testing
+    networks:
+      - team-net             # REQUIRED — makes it reachable from holmes
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   # ── Postgres template ──────────────────────────────────────────────────────
   #
   # postgres:
@@ -120,17 +140,17 @@ services:
   
   # ── Redis template ─────────────────────────────────────────────────────────
   #
-  # redis:
-  #   image: redis:7
-  #   container_name: redis
-  #   restart: unless-stopped
-  #   networks:
-  #     - team-net
-  #   healthcheck:
-  #     test: ["CMD", "redis-cli", "ping"]
-  #     interval: 5s
-  #     timeout: 3s
-  #     retries: 5
+  redis:
+    image: redis:7
+    container_name: redis
+    restart: unless-stopped
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
