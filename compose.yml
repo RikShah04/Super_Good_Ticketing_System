@@ -244,6 +244,27 @@ services:
   #     timeout: 3s
   #     retries: 5
   #
+  # ── Events DB ───────────────────────────────────────────────────────────────
+  
+  events-db:
+    image: postgres:16
+    container_name: events-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: events
+    volumes:
+      - events-db-data:/var/lib/postgresql/data
+      - ./event-catalog/db/events-db-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d events-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+  
   # ── Redis template ─────────────────────────────────────────────────────────
   #
   redis:
@@ -367,9 +388,12 @@ services:
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
 #
+# volumes:
+#   postgres-data:
 volumes:
   payment-db-data:
   fraud-db-data:
   analytics-db-data:
   ticket-purchase-db-data:
   refund-db-data:
+  events-db-data:
