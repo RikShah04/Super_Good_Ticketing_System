@@ -1,21 +1,23 @@
-# Super Good Ticketing System — Event Ticketing Platform
+# Super Good Ticketing System — System 1: Event Ticketing Platform
 
 **Course:** COMPSCI 426  
-**Team:** Henry Branham, Erika Lam, Jasper McCormack, Ian Mei, Ethan Pham, James Rust, Rikhav Shah, Jonathan Zhang  
-**System:** Event Ticketing  
-**Repository:** [\[GitHub URL\]](https://github.com/RikShah04/Super_Good_Ticketing_System)
+**Team:** Ian Mei, Ethan Pham, Jasper McCormack, Henry Braham, Rikhav Shah, Erika Lam, James Rust, Jonathan Zhang  
+**System:** Event Ticketing   
+**Repository:** [\[GitHub URL — public fork of https://github.com/umass-cs-426/starter-project\]](https://github.com/RikShah04/Super_Good_Ticketing_System)
 
 ---
 
 ## Team and Service Ownership
 
-| Team Member | Services / Components Owned                            |
-| ----------- | ------------------------------------------------------ |
-| Ian Mei and Ethan Pham      | `ticket-purchase/`, `ticket-purchase/db/schema.sql`, `waitlist/` |
-| Jasper McCormack and Erika Lam    | `event-catalog/`,`event-catalog/db/schema.sql`      |
-| Henry Branham     | `payment/`, `k6/`                       |
-| James Rust and Rikhav Shah      | `notification/` |
-| Jonathan Zhang    | `analytics/`, `analytics/db/schema.sql` |
+| Team Member | Files / Directories Owned This Sprint |
+| ----------- | ----------------------------------------------- |
+| Ian Mei, Ethan Pham | `ticket-purchase/`, `ticket-purchase/db/schema.sql`, `waitlist/` |
+| Jasper McCormack | `event-catalog/`,`event-catalog/db/schema.sql` |
+| Henry Branham | `payment/`, `k6/` |
+| Rikhav Shah | `notification/` |
+| Erika Lam | `refund/`, `refund/db/schema.sql` |
+| James Rust | `fraud-detection/`, `fraud-detection/db/schema.sql` |
+| Jonathan Zhang | `analytics/`, `analytics/db/schema.sql` |
 
 > Ownership is verified by `git log --author`. Each person must have meaningful commits in the directories they claim.
 
