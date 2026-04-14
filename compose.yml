@@ -368,8 +368,8 @@ services:
 # Declare a volume for each database here, e.g.:
 #
 volumes:
+  payment-service-postgres:
   fraud-db-data:
   analytics-db-data:
   ticket-purchase-db-data:
   refund-db-data:
-   payment-service-postgres:
