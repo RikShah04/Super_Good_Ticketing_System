@@ -96,6 +96,49 @@ services:
       timeout: 5s
       retries: 10
       start_period: 15s
+
+  analytics-db:
+    image: postgres:16-alpine
+    container_name: analytics-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: analytics_db
+      POSTGRES_USER: analytics
+      POSTGRES_PASSWORD: analytics
+    volumes:
+      - analytics-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analytics -d analytics_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  analytics:
+    build: ./analytics
+    container_name: analytics
+    restart: unless-stopped
+    networks:
+      - team-net
+    environment:
+      - PORT=3000
+      - SERVICE_NAME=analytics-worker
+      - DATABASE_URL=postgres://analytics:analytics@analytics-db:5432/analytics_db
+      - REDIS_URL=redis://redis:6379
+      - QUEUE_NAME=analytics:queue
+      - DLQ_NAME=analytics:dlq
+    depends_on:
+      analytics-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     
 
   # Pattern for each service:
@@ -288,5 +331,6 @@ services:
 #
 volumes:
   fraud-db-data:
+  analytics-db-data:
   ticket-purchase-db-data:
   refund-db-data:
