@@ -45,10 +45,8 @@ docker compose exec holmes bash
 ### Base URLs (development)
 
 ```
-fraud-worker   http://fraud-worker:3000 (from holmes)
-notification   http://notification:3000 (from holmes)
-payment   http://payment:3000 (from holmes)
-[your-service-name]    http://localhost:[port]
+fraud-worker   http://localhost:3000 (from holmes)
+ticket-purchase    http://ticket-purchase:3000 (from holmes)
 [worker-name]          http://localhost:[port]   (health endpoint only)
 holmes                 (no port — access via exec)
 ```
@@ -78,7 +76,7 @@ The fraud detection worker is a background service that is responsible for consu
 
 ---
 
-### [Service Name]
+### Ticket Purchase
 
 ### GET /health
 
@@ -95,7 +93,7 @@ GET /health
 **Example request:**
 
 ```bash
-curl http://localhost:[port]/health
+curl http://localhost:3000/health
 ```
 
 **Example response (200):**
@@ -103,8 +101,19 @@ curl http://localhost:[port]/health
 ```json
 {
   "status": "healthy",
-  "db": "ok",
-  "redis": "ok"
+  "service": "ticket-purchase",
+  "timestamp": "2026-04-14T14:22:03.618Z",
+  "uptime_seconds": 8,
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "latency_ms": 16
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    }
+  }
 }
 ```
 
@@ -113,8 +122,19 @@ curl http://localhost:[port]/health
 ```json
 {
   "status": "unhealthy",
-  "db": "ok",
-  "redis": "error: connection refused"
+  "service": "ticket-purchase",
+  "timestamp": "2026-04-14T14:22:03.618Z",
+  "uptime_seconds": 8,
+  "checks": {
+    "database": {
+      "status": "unhealthy",
+      "error": "connection refused"
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    }
+  }
 }
 ```
 
