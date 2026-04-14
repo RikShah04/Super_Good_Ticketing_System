@@ -261,7 +261,7 @@ GET /health
 **Example request:**
 
 ```bash
-curl "http://event-catalog:3005/events"
+curl "http://event-catalog:3005/health"
 ```
 
 **Example response:**
