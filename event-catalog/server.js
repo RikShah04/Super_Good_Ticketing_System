@@ -34,21 +34,33 @@ app.post("/reserve-seats", async (req, res) => {
     const { event_id, seats } = req.body;
 
     if (!event_id || !seats || seats <= 0) {
-        return res.status(400).send("Missing or invalid event_id or seats");
+        return res.json({
+            status: 400,
+            message: "Missing or invalid event_id or seats."
+        });
     }
-
     const raw = await client.get(event_id);
     if (!raw) {
-        return res.status(404).send("Event not found");
+        return res.json({
+            status: 404,
+            message: "Event not found."    
+        });
     }
 
     const event = JSON.parse(raw);
     if (event.availableSeats > 0 && seats <= event.availableSeats) {
         event.availableSeats -= seats;
         await client.set(event_id, JSON.stringify(event));
-        return res.status(200).send("Purchase Successful!");
+        return res.json({
+            status: 200,
+            message: "Purchase Successful!",
+            cost : event.priceUsd
+        });
     } else {
-        return res.status(409).send("No more seats for this event");
+        return res.json({
+            status: 409,
+            message: "No more seats for this event."    
+        });
     }
 });
 
