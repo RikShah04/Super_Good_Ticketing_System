@@ -15,6 +15,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
 const QUEUE_NAME = process.env.FRAUD_QUEUE_KEY ?? 'fraud:queue'
 const DLQ_NAME = process.env.FRAUD_DLQ_KEY ?? `${QUEUE_NAME}:dlq`
+const RESULT_CHANNEL = process.env.FRAUD_FLAGGED_CHANNEL ?? 'fraud:flagged'
 
 const startTime = Date.now()
 let lastJobAt = null
