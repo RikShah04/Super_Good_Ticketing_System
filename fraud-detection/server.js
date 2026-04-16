@@ -26,6 +26,18 @@ export function recordJobProcessed() {
   jobsProcessed++
 }
 
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS fraud_results (
+      id SERIAL PRIMARY KEY,
+      client_order_id TEXT UNIQUE NOT NULL,
+      user_id TEXT,
+      amount NUMERIC,
+      flagged BOOLEAN NOT NULL
+    )
+  `)
+}
+
 app.get('/health', async (req, res) => {
   const checks = {}
   let healthy = true
