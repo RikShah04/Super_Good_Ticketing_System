@@ -23,7 +23,6 @@ export function makeEvent() {
 }
 
 async function seed() {
-    console.log("SEED FUNCTION CALLED:");
     const db = await pool.connect();
 
     try {
@@ -44,11 +43,10 @@ async function seed() {
             const query = `INSERT INTO eventcatalog(${columns}) VALUES (${placeholders})`;
             await db.query(query, values);
             
-            console.log(`Inserted event ${i+1}/${NUM_EVENTS}`);
         }
 
         await db.query('COMMIT');
-        console.log('Events-db seeded successfully.');
+        console.log('Events-db Seeded successfully!');
     } catch (err) {
         await db.query('ROLLBACK');
         console.error("SEED FAILED.");
@@ -58,5 +56,5 @@ async function seed() {
         pool.end()
     }
 }
-console.log("seedEvents.js started.");
+
 seed();
