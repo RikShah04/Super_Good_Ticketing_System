@@ -1,6 +1,7 @@
 import express from 'express';
 import redis from 'redis';
 import pg from 'pg';
+import { makeEvent } from './seedEvents.js';
 
 const app = express();
 const port = Number(process.env.PORT || '3005');
@@ -15,6 +16,23 @@ const pool = new pg.Pool({ connectionString: DATABASE_URL });
 pool.on('error', err => {
     console.error('Postgres error: ', err.message);
 });
+
+// Seed pg with data
+async function seed() {
+    await pool.connect();
+    for (let i = 0; i < 10; i++) {
+        event = makeEvent();
+        keys = Object.keys(event);
+        values = Object.values(event);
+        
+        // Generate placeholders (prevent SQL injection attacks)
+        const placeholders = keys.map((_, j) => `$${i+1}`).join(', ');
+        const columns = keys.join(', ');
+        query = `INSERT INTO eventCatalog(${columns}) VALUES (${placeholders})`;
+        await pool.query(query, values);
+    }
+    await client.end();
+}
 
 const client = redis.createClient({ url: redisUrl });
 

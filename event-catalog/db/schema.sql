@@ -6,5 +6,5 @@ CREATE TABLE eventCatalog (
     eventDate DATE NOT NULL,
     totalSeats int CHECK (totalSeats > 0),
     availableSeats int NOT NULL,
-    priceUsd DECIMAL(10, 2) CHECK (priceUsd >= 0),
-);
+    priceUsd DECIMAL(10, 2) CHECK (priceUsd >= 0)
+)
