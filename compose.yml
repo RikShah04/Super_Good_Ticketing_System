@@ -214,6 +214,7 @@ services:
       - team-net             # REQUIRED — makes it reachable from holmes
     environment:
       - REDIS_URL=redis://redis:6379
+      - NOTIFICATION_SUB_KEY=notification:pubsub
     depends_on:
       redis:
         condition: service_healthy
