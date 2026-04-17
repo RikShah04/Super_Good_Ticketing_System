@@ -255,6 +255,7 @@ services:
       POSTGRES_PASSWORD: pass
       POSTGRES_DB: events-db
     volumes:
+      - ./event-catalog/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
       - events-db-data:/var/lib/postgresql/data
     networks:
       - team-net
