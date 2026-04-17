@@ -27,7 +27,78 @@ await client.connect();
 app.use(express.json());
 
 app.get('/events', (req, res) => {
-    res.json(events);
+    // Default page is 1
+    const page = Math.max(parseInt(req.query.page || "1", 10), 1);
+    // Default is 20, hard limit at 100.
+    const limit = Math.min(
+        Math.max(parseInt(req.query.limit || "20", 10), 1),
+        100
+    );
+    const venue = req.query.venue || "";
+
+    const offset = (page - 1) * limit;
+
+    // Create the Redis cache key
+    const cacheKey = `events:${page}:${limit}:${venue}`;
+
+    try {
+        // Check if Redis has the event cached already
+        const cached = await client.get(cacheKey);
+
+        if (cached) {
+            return res.json({
+                page,
+                limit,
+                total,
+                events: JSON.parse(cached),
+            });
+        }
+
+        // Not in redis? query the db
+        let query = `SELECT * FROM eventcatalog`;
+        const params = [];
+        const conditions = [];
+
+        if (venue) {
+            params.push(`%${venue}%`);
+            conditions.push(`venue ILIKE ${params.length}`);
+        }
+
+        if (conditions.length > 0) {
+            query += " WHERE " + conditions.join(" AND ");
+        }
+
+        params.push(limit);
+        params.push(offset);
+
+        query += `ORDER BY eventdate ASC LIMIT $${params.length - 1} OFFSET $${params.length}`;
+
+        const result = await pool.query(query, params);
+
+        const rows = result.rows;
+
+        // Cache results in redis
+        await client.setEx(
+            cacheKey,
+            60,
+            JSON.stringify(result.rows)
+        );
+
+        res.json({
+            page,
+            limit,
+            total: rows.length,
+            events: result.rows,
+        });
+
+    } catch (err) {
+        console.error("GET /events failed:", err);
+
+        res.status(503).json({
+            error: "Database or Redis unavailable",
+            details: err.message,
+        });
+    }
 });
 
 app.get('/health', (req, res) => {
