@@ -75,15 +75,26 @@ app.post('/purchase', async (req, res) => {
   const seatRes = await fetch(`${EVENT_CATALOG_URL}/reserve-seats`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ eventId, seats }),
+    body: JSON.stringify({ event_id: eventId, seats }),
   });
-  const seatData = await seatRes.json();
 
-  // pushes job for waitlist if no seat available
-  if (!seatData.ok) {
-    client.lpush(WAITLIST_QUEUE_NAME, JSON.stringify({ eventId, seats, paymentInfo }));
-    console.log('No seats available, pushed job to waitlist queue');
+  // check seatRes status for errors
+  if (seatRes.status == 404) {
+    console.error('Event not found');
+    res.status(404).json({ message: 'Event not found' });
   }
+  else if (seatRes.status == 409) {
+    console.error('Not enough seats available, pushing job to waitlist queue');
+    client.lpush(WAITLIST_QUEUE_NAME, JSON.stringify({ eventId, seats, paymentInfo }));
+    res.status(409).json({ message: 'Not enough seats available' });
+  }
+  else if (seatRes.status >= 500) {
+    console.error('event-catalog error');
+    res.status(500).json({ message: 'Unexpected error occured' });
+  }
+
+  const { message, cost, seatsReserved } = await seatRes.json();
+  const price = parseFloat(cost);
 
   // let success = false;
   // let retries = 0;
