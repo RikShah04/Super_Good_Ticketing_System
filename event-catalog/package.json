@@ -5,13 +5,15 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "seed": "node seedEvents.js"
   },
   "author": "Jasper McCormack",
   "license": "ISC",
   "dependencies": {
     "express": "^5.2.1",
     "redis": "^5.8.2",
-    "pg": "^8.12.0"
+    "pg": "^8.12.0",
+    "@faker-js/faker": "^10.4.0"
   }
 }
