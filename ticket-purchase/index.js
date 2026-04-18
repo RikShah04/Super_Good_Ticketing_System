@@ -17,6 +17,7 @@ const RETRIES = process.env.RETRIES ? parseInt(process.env.RETRIES) : 3;
 
 
 const app = express();
+app.use(express.json());
 
 const client = redis.createClient({ url: REDIS_URL });
 client.on('error', (err) => {
@@ -95,6 +96,7 @@ app.post('/purchase', async (req, res) => {
 
   const { message, cost, seatsReserved } = await seatRes.json();
   const price = parseFloat(cost);
+  console.log('Seat reserved');
 
   // let success = false;
   // let retries = 0;
