@@ -5,7 +5,6 @@ import pg from 'pg';
 const app = express();
 const port = Number(process.env.PORT || '3005');
 const SERVICE_NAME = process.env.SERVICE_NAME || 'event-catalog';
-const events = {};
 
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://user:pass@events-db:5432/events-db"
 const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
@@ -26,41 +25,75 @@ await client.connect();
 
 app.use(express.json());
 
-app.get('/events', (req, res) => {
-    res.json(events);
+app.get('/events', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT
+                id,
+                name,
+                venue,
+                eventdate AS "eventDate",
+                totalseats AS "totalSeats",
+                availableseats AS "availableSeats",
+                priceusd AS "priceUsd"
+            FROM eventcatalog
+            ORDER BY eventdate ASC
+        `);
+
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Failed to fetch events:', err.message);
+        res.status(500).json({ message: 'Failed to fetch events.' });
+    }
 });
 
 app.post("/reserve-seats", async (req, res) => {
     const { event_id, seats } = req.body;
 
-    if (!event_id || !seats || seats <= 0) {
-        return res.json({
-            status: 400,
-            message: "Missing or invalid event_id or seats."
-        });
-    }
-    const raw = await client.get(event_id);
-    if (!raw) {
-        return res.json({
-            status: 404,
-            message: "Event not found."    
+    if (!event_id || !Number.isInteger(seats) || seats <= 0) {
+        return res.status(400).json({
+            message: 'Missing or invalid event_id or seats.'
         });
     }
 
-    const event = JSON.parse(raw);
-    if (event.availableSeats > 0 && seats <= event.availableSeats) {
-        event.availableSeats -= seats;
-        await client.set(event_id, JSON.stringify(event));
-        return res.json({
-            status: 200,
-            message: "Purchase Successful!",
-            cost : event.priceUsd
+    const db = await pool.connect();
+    try {
+        await db.query('BEGIN');
+
+        const eventResult = await db.query(
+            'SELECT id, availableseats, priceusd FROM eventcatalog WHERE id = $1 FOR UPDATE',
+            [event_id]
+        );
+
+        if (eventResult.rowCount === 0) {
+            await db.query('ROLLBACK');
+            return res.status(404).json({ message: 'Event not found.' });
+        }
+
+        const event = eventResult.rows[0];
+
+        if (seats > event.availableseats) {
+            await db.query('ROLLBACK');
+            return res.status(409).json({ message: 'No more seats for this event.' });
+        }
+
+        await db.query(
+            'UPDATE eventcatalog SET availableseats = availableseats - $1 WHERE id = $2',
+            [seats, event_id]
+        );
+
+        await db.query('COMMIT');
+        return res.status(200).json({
+            message: 'Purchase Successful!',
+            cost: event.priceusd,
+            seatsReserved: seats
         });
-    } else {
-        return res.json({
-            status: 409,
-            message: "No more seats for this event."    
-        });
+    } catch (err) {
+        await db.query('ROLLBACK');
+        console.error('Failed to reserve seats:', err.message);
+        return res.status(500).json({ message: 'Failed to reserve seats.' });
+    } finally {
+        db.release();
     }
 });
 
