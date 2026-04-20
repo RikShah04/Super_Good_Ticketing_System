@@ -124,7 +124,7 @@ services:
       - FRAUD_DLQ_KEY=fraud:dlq
       - FRAUD_FLAGGED_CHANNEL=fraud:flagged
       - FRAUD_RESULT_CHANNEL=fraud:result
-      - FRAUD_RESULT_KEY_PREFIX=fraud:result:
+      - "FRAUD_RESULT_KEY_PREFIX=fraud:result:"
       - FRAUD_HIGH_AMOUNT_THRESHOLD=500
     depends_on:
       fraud-db:
