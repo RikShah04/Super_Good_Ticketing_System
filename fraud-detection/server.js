@@ -18,7 +18,10 @@ const DLQ_NAME = process.env.FRAUD_DLQ_KEY ?? `${QUEUE_NAME}:dlq`
 const FLAGGED_CHANNEL = process.env.FRAUD_FLAGGED_CHANNEL ?? 'fraud:flagged'
 const RESULT_CHANNEL = process.env.FRAUD_RESULT_CHANNEL ?? 'fraud:result'
 const RESULT_KEY_PREFIX = process.env.FRAUD_RESULT_KEY_PREFIX ?? 'fraud:result:'
-const HIGH_AMOUNT_THRESHOLD = Number(process.env.FRAUD_HIGH_AMOUNT_THRESHOLD ?? 500)
+
+const HIGH_PRICE_THRESHOLD = Number(process.env.FRAUD_HIGH_PRICE_THRESHOLD ?? 500)
+const MAX_SEATS_THRESHOLD = Number(process.env.FRAUD_MAX_SEATS_THRESHOLD ?? 6)
+const CARD_ATTEMPT_LIMIT = Number(process.env.FRAUD_CARD_ATTEMPT_LIMIT ?? 4)
 
 const startTime = Date.now()
 let lastJobAt = null
