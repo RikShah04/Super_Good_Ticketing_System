@@ -84,6 +84,34 @@ async function determineFraud(job) {
   return { flagged: false, reason: 'passed_basic_rules' }
 }
 
+async function saveFraudResult(job, result) {
+  await pool.query(
+    `
+      INSERT INTO fraud_results
+        (client_order_id, user_id, amount, currency, flagged, reason, raw_event)
+      VALUES
+        ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (client_order_id)
+      DO UPDATE SET
+        user_id = EXCLUDED.user_id,
+        amount = EXCLUDED.amount,
+        currency = EXCLUDED.currency,
+        flagged = EXCLUDED.flagged,
+        reason = EXCLUDED.reason,
+        raw_event = EXCLUDED.raw_event
+    `,
+    [
+      job.clientOrderId,
+      job.userId,
+      Number(job.amount),
+      job.currency ?? 'USD',
+      result.flagged,
+      result.reason,
+      JSON.stringify(job),
+    ]
+  )
+}
+
 app.get('/health', async (req, res) => {
   const checks = {}
   let healthy = true
