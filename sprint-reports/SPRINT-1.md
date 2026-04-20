@@ -46,7 +46,7 @@ git log --author="Name" --oneline -- path/to/directory/
 
 ## What Is Not Working / Cut
 
-We were unable to get to k6 testing because our main read endpoint was finished too late (see incomplete table below). Moving foward, we want to work on contributing in a timely manner so that tasks that depend on others are not also pushed back. We will communicate more openly and proactively with each other to ensure that each person is aware of what tasks they have to accomplish and what other work depends on theirs.
+Moving foward, we want to work on contributing in a timely manner so that tasks that depend on others are not also pushed back. We will communicate more openly and proactively with each other to ensure that each person is aware of what tasks they have to accomplish and what other work depends on theirs.
 
 ---
 
@@ -56,16 +56,40 @@ Script: `k6/sprint-1.js`
 Run: `docker compose exec holmes k6 run /workspace/k6/sprint-1.js`
 
 ```
-<no k6 results to display>
+    checks_total.......: 3994    56.723811/s
+    checks_succeeded...: 100.00% 3994 out of 3994
+    checks_failed......: 0.00%   0 out of 3994
+
+    ✓ status is 200
+    ✓ response time < 500ms
+
+    CUSTOM
+    errors.........................: 0.00%  0 out of 1997
+
+    HTTP
+    http_req_duration..............: avg=3.47ms   min=245.5µs  med=3.45ms   max=31.91ms  p(90)=5.24ms  p(95)=6.02ms  
+      { expected_response:true }...: avg=3.47ms   min=245.5µs  med=3.45ms   max=31.91ms  p(90)=5.24ms  p(95)=6.02ms  
+    http_req_failed................: 0.00%  0 out of 1997
+    http_reqs......................: 1997   28.361906/s
+
+    EXECUTION
+    iteration_duration.............: avg=505.67ms min=500.63ms med=505.45ms max=534.78ms p(90)=508.6ms p(95)=509.89ms
+    iterations.....................: 1997   28.361906/s
+    vus............................: 1      min=1         max=20
+    vus_max........................: 20     min=20        max=20
+
+    NETWORK
+    data_received..................: 469 kB 6.7 kB/s
+    data_sent......................: 184 kB 2.6 kB/s
 ```
 
 | Metric             | Value |
 | ------------------ | ----- |
-| p50 response time  |   -   |
-| p95 response time  |   -   |
-| p99 response time  |   -   |
-| Requests/sec (avg) |   -   |
-| Error rate         |   -   |
+| p50 response time  |   3.45ms  |
+| p95 response time  |   6.02ms  |
+| p99 response time  |   8.6ms   |
+| Requests/sec (avg) |   28.36   |
+| Error rate         |     0%    |
 
 These numbers are your baseline. Sprint 2 caching should improve them measurably.
 

@@ -46,7 +46,14 @@ docker compose exec holmes bash
 
 ```
 fraud-worker   http://localhost:3000 (from holmes)
-[your-service-name]    http://localhost:[port]
+ticket-purchase    http://ticket-purchase:3000 (from holmes)
+payment    http://payment:3000 (from holmes)
+refund    http://refund:3001 (from holmes)
+analytics    http://analytics:3000 (from holmes)
+notification   http://notification:3000 (from holmes)
+event-catalog   http://localhost:3005 (from holmes)
+waitlist    http://waitlist:3000 (from holmes)
+
 [worker-name]          http://localhost:[port]   (health endpoint only)
 holmes                 (no port — access via exec)
 ```
@@ -60,10 +67,9 @@ holmes                 (no port — access via exec)
 
 ## System Overview
 
-[One paragraph describing what your system does and how the services interact.
-Include which service calls which, what queues exist, and how data flows.]
+The Super Good Ticketing System is a microservice-based event ticketing platform where users can browse events, purchase tickets, and receive notifications. The system is composed of multiple services including ticket purchase, payment, notification, refund, analytics, and fraud detection.
 
-The fraud detection worker is a background service that is responsible for consuming purchase events from a Redis queue, processing each event, tracking worker activity, and reporting system health. 
+Services communicate using a combination of synchronous HTTP calls and asynchronous messaging via Redis. For example, the ticket-purchase service processes a purchase request and pushes a job to a Redis queue for downstream processing.
 
 ---
 
@@ -76,7 +82,7 @@ The fraud detection worker is a background service that is responsible for consu
 
 ---
 
-### [Service Name]
+### Ticket Purchase
 
 ### GET /health
 
@@ -93,7 +99,7 @@ GET /health
 **Example request:**
 
 ```bash
-curl http://localhost:[port]/health
+curl http://localhost:3000/health
 ```
 
 **Example response (200):**
@@ -101,8 +107,19 @@ curl http://localhost:[port]/health
 ```json
 {
   "status": "healthy",
-  "db": "ok",
-  "redis": "ok"
+  "service": "ticket-purchase",
+  "timestamp": "2026-04-14T14:22:03.618Z",
+  "uptime_seconds": 8,
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "latency_ms": 16
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    }
+  }
 }
 ```
 
@@ -111,8 +128,19 @@ curl http://localhost:[port]/health
 ```json
 {
   "status": "unhealthy",
-  "db": "ok",
-  "redis": "error: connection refused"
+  "service": "ticket-purchase",
+  "timestamp": "2026-04-14T14:22:03.618Z",
+  "uptime_seconds": 8,
+  "checks": {
+    "database": {
+      "status": "unhealthy",
+      "error": "connection refused"
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    }
+  }
 }
 ```
 
@@ -275,6 +303,266 @@ curl "http://event-catalog:3005/health"
   "status": "healthy",
   "service": "event-catalog",
   "timestamp": "2026-04-14T13:12:49.346Z"
+}
+```
+
+## Notification Service
+
+### GET /health
+
+```
+GET /health
+
+   Returns the current health status of the notification service, including:
+    - Redis connectivity
+
+  Responses:
+    200  Service is healthy (all required dependencies reachable)
+    503  Service is unhealthy (one or more dependencies failing)
+```
+
+**Example request:**
+
+```bash
+docker compose exec holmes curl http://notification:3000/health
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "Notification Service",
+  "timestamp": "2026-04-14T04:26:03.396Z",
+  "uptime_seconds": 512,
+  "checks": {
+    "redis": {
+    "status": "healthy",
+    "latency_ms": 5
+    }
+  }
+}
+```
+
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "Notification Service",
+  "timestamp": "2026-04-14T04:26:03.396Z",
+  "uptime_seconds": 512,
+  "checks": {
+    "redis": {
+    "status": "unhealthy",
+    "error": "connection refused"
+    }
+  }
+}
+```
+
+---
+
+### Payment Service
+
+### GET /health
+
+```
+GET /health
+
+   Returns the current health status of the payment service, including:
+    - Postgres connectivity
+
+  Responses:
+    200  Service is healthy (all required dependencies reachable)
+    503  Service is unhealthy (one or more dependencies failing)
+```
+
+**Example request:**
+
+```bash
+docker compose exec holmes curl http://payment:3000/health
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "payments",
+  "timestamp": "2026-04-14T04:27:03.050Z",
+  "uptime_seconds": 12,
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "latency_ms": 2
+    }
+  }
+}
+```
+
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "payments",
+  "timestamp": "2026-04-14T04:27:03.050Z",
+  "uptime_seconds": 20,
+  "checks": {
+    "payment-db": {
+    "status": "unhealthy",
+    "error": "connection refused"
+    }
+  }
+}
+```
+
+## fraud-worker
+
+### GET /health
+ ```
+ GET /health
+
+   Returns the current health status of the fraud worker, including:
+    - database connectivity
+    - Redis connectivity
+    - queue depth and DLQ depth
+    - worker activity metrics (jobs processed, last job timestamp)
+
+  Responses:
+    200  Service is healthy (all required dependencies reachable)
+    503  Service is unhealthy (one or more dependencies failing)
+```
+**Example request:**
+
+```bash
+docker compose exec holmes curl http://fraud-worker:3000/health
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "fraud-worker",
+  "timestamp": "2026-04-13T21:17:13.813Z",
+  "uptime_seconds": 18,
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "latency_ms": 2
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    },
+    "queue": {
+      "status": "healthy",
+      "depth": 0,
+      "dlq_depth": 0
+    },
+    "worker": {
+      "status": "healthy",
+      "last_job_at": "never",
+      "jobs_processed": 0,
+      "seconds_since_last_job": null
+    }
+  }
+}
+```
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "fraud-worker",
+  "timestamp": "2026-04-13T21:25:42.102Z",
+  "uptime_seconds": 45,
+  "checks": {
+    "database": {
+      "status": "unhealthy",
+      "error": "connect ECONNREFUSED"
+    },
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 1
+    },
+    "queue": {
+      "status": "unhealthy",
+      "error": "Failed to read queue"
+    },
+    "worker": {
+      "status": "degraded",
+      "last_job_at": "2026-04-13T21:24:58.000Z",
+      "jobs_processed": 3,
+      "seconds_since_last_job": 44
+    }
+  }
+}
+```
+
+## Refund Worker
+
+### GET /health
+
+```
+GET /health
+
+   Returns the current health status of the refund worker, including:
+    - Redis connectivity
+    - database connectivity
+
+  Responses:
+    200  Service is healthy (all required dependencies reachable)
+    503  Service is unhealthy (one or more dependencies failing)
+```
+
+**Example request:**
+
+```bash
+docker compose exec holmes curl http://notification:3001/health
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "healthy",
+  "service": "refund",
+  "timestamp": "2026-04-14T14:27:11.343Z",
+  "uptime_seconds": 175,
+  "checks": {
+    "redis": {
+      "status": "healthy",
+      "latency_ms": 3
+    },
+    "database": {
+      "status": "healthy",
+      "latency_ms": 63
+    },
+  }
+}
+```
+
+**Example response (503):**
+
+```json
+{
+  "status": "unhealthy",
+  "service": "refund",
+  "timestamp": "2026-04-14T04:26:03.396Z",
+  "uptime_seconds": 512,
+  "checks": {
+    "redis": {
+      "status": "unhealthy",
+      "latency_ms": 3
+    },
+    "database": {
+      "status": "unhealthy",
+      "latency_ms": 63
+    },
+  }
 }
 ```
 
