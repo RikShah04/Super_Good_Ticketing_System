@@ -32,17 +32,25 @@ export function recordJobProcessed() {
   jobsProcessed++
 }
 
+function getCardLast4(cc) {
+  return String(cc).slice(-4)
+}
+
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS fraud_results (
       id SERIAL PRIMARY KEY,
-      client_order_id TEXT UNIQUE NOT NULL,
-      user_id TEXT,
-      amount NUMERIC,
-      currency TEXT,
+      payment_id TEXT UNIQUE NOT NULL,
+      order_id TEXT NOT NULL,
+      event_id TEXT NOT NULL,
+      seat_count INTEGER NOT NULL,
+      seats JSONB NOT NULL,
+      card_type TEXT NOT NULL,
+      card_last4 TEXT NOT NULL,
+      price NUMERIC NOT NULL,
       flagged BOOLEAN NOT NULL,
       reason TEXT NOT NULL,
-      raw_event JSONB,
+      raw_event JSONB NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `)
@@ -53,16 +61,48 @@ function validateJob(job) {
     throw new Error('job must be an object')
   }
 
-  if (!job.clientOrderId) {
-    throw new Error('missing clientOrderId')
+  if (!job.event_id) {
+    throw new Error('missing event_id')
   }
 
-  if (!job.userId) {
-    throw new Error('missing userId')
+  if (!job.paymentID) {
+    throw new Error('missing paymentID')
   }
 
-  if (job.amount == null || Number.isNaN(Number(job.amount))) {
-    throw new Error('missing or invalid amount')
+  if (!job.orderID) {
+    throw new Error('missing orderID')
+  }
+
+  if (!Array.isArray(job.seats)) {
+    throw new Error('seats must be an array')
+  }
+
+  if (job.seats.length === 0) {
+    throw new Error('seats cannot be empty')
+  }
+
+  if (!job.cc || typeof job.cc !== 'string') {
+    throw new Error('missing or invalid cc')
+  }
+
+  if (job.cc.length < 15 || job.cc.length > 16) {
+    throw new Error('cc must be a 15-16 digit string')
+  }
+
+  if (!/^\d{15,16}$/.test(job.cc)) {
+    throw new Error('cc must contain only digits')
+  }
+
+  if (!job.cardType || !['Visa', 'Amex', 'Master'].includes(job.cardType)) {
+    throw new Error('invalid cardType')
+  }
+
+  if (job.price == null || Number.isNaN(Number(job.price))) {
+    throw new Error('missing or invalid price')
+  }
+
+  if (Number(job.price) < 0) {
+    throw new Error('price cannot be negative')
   }
 }
 
