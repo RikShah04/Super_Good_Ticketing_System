@@ -92,7 +92,7 @@ app.post('/purchase', async (req, res) => {
   }
   else if (seatRes.status >= 500) {
     console.error('event-catalog error');
-    res.status(500).json({ message: 'Unexpected error occured' });
+    res.status(500).json({ message: 'Event-catalog service error' });
   }
 
   const { message, cost, seatsReserved } = await seatRes.json();
@@ -119,28 +119,36 @@ app.post('/purchase', async (req, res) => {
     else {
       const paymentData = await paymentRes.json();
 
-      if (paymentRes.status === 400)
+      if (paymentRes.status === 400) {
         console.error(`Payment failed due to invalid data: ${paymentData.error}`);
-      else if (paymentRes.status >= 500)
+        return res.status(400).json({ message: 'Payment failed due to invalid data' });
+      }
+      else if (paymentRes.status >= 500) {
         console.error(`Payment service error: ${paymentData.error}`);
-
-      console.log(`Retrying (${retries}/${RETRIES})`);
-      retries++;
-      continue;
+        if (retries > RETRIES - 1) {
+          return res.status(500).json({ message: 'Payment service error' });
+        }
+        console.log(`Retrying (${retries}/${RETRIES})`);
+        retries++;
+      }
     }
   }
 
-  // // for persistent payment failures, queries event-catalog to unreserve seat
-  // // TODO: message waitlist to promote job
-  // if (!success) {
-  //   await fetch(`${EVENT_CATALOG_URL}/unreserve-seats`, {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({ eventId, seats }),
-  //   });
-  //   console.log('Payment failed after retries, unreserved seats and will promote waitlist job');
-  // }
-  // // TODO: save purchase attempt to db
+  // for persistent payment failures, queries event-catalog to unreserve seat
+  if (!success) {
+    // await fetch(`${EVENT_CATALOG_URL}/unreserve-seats`, {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ eventId, seats }),
+    // });
+    // console.log('Payment failed after retries, unreserved seats and will promote waitlist job');
+
+    // TODO: message waitlist to promote job
+
+    return res.status(500).json({ message: 'Payment failed after retries' });
+  }
+  
+  // TODO: save purchase attempt to db
 
   // // TODO: push job to fraud, notification, analytics channels
   // client.lpush(FRAUD_QUEUE_NAME, JSON.stringify({}));
