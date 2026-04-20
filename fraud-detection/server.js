@@ -207,10 +207,53 @@ async function workerLoop() {
     try {
       const result = await workerRedis.brPop(QUEUE_NAME, 0)
       if (!result?.element) continue
-      
-      const job = JSON.parse(result.element)
-      console.log('[fraud-worker] processed', job.clientOrderId ?? 'unknown')
-      recordJobProcessed()
+
+      let job
+      try {
+        job = JSON.parse(result.element)
+      } catch (err) {
+        console.error('[fraud-worker] invalid JSON, moving to DLQ')
+        await redis.rPush(DLQ_NAME, result.element)
+        continue
+      }
+
+      try {
+        validateJob(job)
+
+        console.log(
+          '[fraud-worker] received fraud-check event',
+          JSON.stringify({
+            clientOrderId: job.clientOrderId,
+            userId: job.userId,
+            amount: job.amount,
+          })
+        )
+
+        const decision = await determineFraud(job)
+        await saveFraudResult(job, decision)
+        const published = await publishFraudResult(job, decision)
+
+        console.log(
+          '[fraud-worker] completed fraud-check',
+          JSON.stringify(published)
+        )
+
+        recordJobProcessed()
+      } catch (err) {
+        console.error(
+          '[fraud-worker] failed processing job, moving to DLQ:',
+          err.message
+        )
+
+        await redis.rPush(
+          DLQ_NAME,
+          JSON.stringify({
+            originalJob: job,
+            error: err.message,
+            failedAt: new Date().toISOString(),
+          })
+        )
+      }
     } catch (err) {
       console.error('[fraud-worker] loop error', err.message)
     }
