@@ -290,9 +290,13 @@ async function workerLoop() {
         console.log(
           '[fraud-worker] received fraud-check event',
           JSON.stringify({
-            clientOrderId: job.clientOrderId,
-            userId: job.userId,
-            amount: job.amount,
+            paymentID: job.paymentID,
+            orderID: job.orderID,
+            event_id: job.event_id,
+            seatCount: job.seats.length,
+            cardType: job.cardType,
+            price: Number(job.price),
+            cardLast4: getCardLast4(job.cc),
           })
         )
 
@@ -315,7 +319,11 @@ async function workerLoop() {
         await redis.rPush(
           DLQ_NAME,
           JSON.stringify({
-            originalJob: job,
+            originalJob: {
+              paymentID: job?.paymentID,
+              orderID: job?.orderID,
+              event_id: job?.event_id,
+            },
             error: err.message,
             failedAt: new Date().toISOString(),
           })
