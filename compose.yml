@@ -366,6 +366,7 @@ services:
       POSTGRES_PASSWORD: pass
       POSTGRES_DB: ticket-purchase-db
     volumes:
+      - ./ticket-purchase/schema.sql:/docker-entrypoint-initdb.d/schema.sql
       - ticket-purchase-db-data:/var/lib/postgresql/data
     networks:
       - team-net

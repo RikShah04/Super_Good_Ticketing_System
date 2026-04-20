@@ -69,9 +69,24 @@ app.get('/health', async (req, res) => {
 });
 
 app.post('/purchase', async (req, res) => {
+  const markFailed = async (id, reason) => {
+    await db.query(
+      'UPDATE ticket_purchases SET status = $2, reason = $3 WHERE id = $1',
+      [id, 'failed', reason]
+    );
+  };
+
   const { eventId, seats, paymentInfo } = req.body;
   const { cc, cvv, expiry, cardType } = paymentInfo;
   console.log('Received purchase request, querying event-catalog for seat availability');
+
+  // start db log
+  const dbRow = await db.query(
+    `INSERT INTO ticket_purchases (event_id, payment_id, seats, charge, status) 
+    VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+    [eventId, null, seats, null, 'pending']
+  );
+  const id = dbRow.rows[0].id;
 
   // queries event-catalog for seat
   const seatRes = await fetch(`${EVENT_CATALOG_URL}/reserve-seats`, {
@@ -83,78 +98,104 @@ app.post('/purchase', async (req, res) => {
   // check seatRes status for errors
   if (seatRes.status == 404) {
     console.error('Event not found');
-    res.status(404).json({ message: 'Event not found' });
+    await markFailed(id, 'Event not found');
+    return res.status(404).json({ message: 'Event not found' });
   }
   else if (seatRes.status == 409) {
     console.error('Not enough seats available, pushing job to waitlist queue');
-    client.lpush(WAITLIST_QUEUE_NAME, JSON.stringify({ eventId, seats, paymentInfo }));
-    res.status(409).json({ message: 'Not enough seats available' });
+    await markFailed(id, 'Not enough seats available');
+    // client.lpush(WAITLIST_QUEUE_NAME, JSON.stringify({ eventId, seats, paymentInfo }));
+    return res.status(409).json({ message: 'Not enough seats available' });
   }
   else if (seatRes.status >= 500) {
     console.error('event-catalog error');
-    res.status(500).json({ message: 'Event-catalog service error' });
+    await markFailed(id, 'Event-catalog service error');
+    return res.status(500).json({ message: 'Event-catalog service error' });
   }
 
   const { message, cost, seatsReserved } = await seatRes.json();
   const price = parseFloat(cost);
   console.log('Seat reserved');
 
-  let success = false;
+  // update db log with price
+  await db.query(
+    'UPDATE ticket_purchases SET charge = $2 WHERE id = $1',
+    [id, price]
+  );
+
   let retries = 0;
   
   // query payments for purchase, with retries
-  while (!success && retries < RETRIES) {
+  while (retries < RETRIES) {
     console.log('Querying payment service for purchase confirmation');
 
+    // TODO: send previously generated payment_id on retry
+    // currently creates a new id even on retries
     const paymentRes = await fetch(`${PAYMENT_URL}/process`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cc, cvv, expiry, cardType, price }),
     });
+    const paymentData = await paymentRes.json();
 
+    // update db log with payment id
+    await db.query(
+      'UPDATE ticket_purchases SET payment_id = $2 WHERE id = $1',
+      [id, paymentData.paymentID]
+    );
+
+    // on successful payments...
     if (paymentRes.ok) {
-      console.log('Payment successful');
-      success = true;
-    }
-    else {
-      const paymentData = await paymentRes.json();
+      // update db log with status (success)
+      await db.query(
+        'UPDATE ticket_purchases SET status = $2 WHERE id = $1',
+        [id, 'success']
+      );
 
+      // // TODO: push job to fraud, notification, analytics channels
+      // console.log('Pushing fraud, analytics, notification jobs to respective queues');
+      // client.lpush(FRAUD_QUEUE_NAME, JSON.stringify({}));
+      // client.lpush(ANALYTICS_QUEUE_NAME, JSON.stringify({}));
+      // client.publish(NOTIFICATION_PUBSUB_NAME, JSON.stringify({}));
+
+      console.log('Payment successful');
+      return res.status(200).json({ message: 'Purchase successful' });
+    }
+
+    // on failures...
+    else {
+      // on client errors, fail
       if (paymentRes.status === 400) {
-        console.error(`Payment failed due to invalid data: ${paymentData.error}`);
-        return res.status(400).json({ message: 'Payment failed due to invalid data' });
+        console.error('Invalid payment data');
+        await markFailed(id, 'Invalid payment data');
+        return res.status(400).json({ message: 'Invalid payment data' });
       }
+
+      // on server errors, retry
       else if (paymentRes.status >= 500) {
         console.error(`Payment service error: ${paymentData.error}`);
-        if (retries > RETRIES - 1) {
-          return res.status(500).json({ message: 'Payment service error' });
+
+        // for persistent payment failures, queries event-catalog to unreserve seat and ends
+        if (retries >= RETRIES) {
+          await markFailed(id, 'Payment service error after retries');
+
+          // await fetch(`${EVENT_CATALOG_URL}/unreserve-seats`, {
+          //   method: 'POST',
+          //   headers: { 'Content-Type': 'application/json' },
+          //   body: JSON.stringify({ eventId, seats }),
+          // });
+          // console.log('Payment failed after retries, unreserved seats and will promote waitlist job');
+
+          // TODO: message waitlist to promote job
+
+          return res.status(500).json({ message: 'Payment service error after retries' });
         }
+
         console.log(`Retrying (${retries}/${RETRIES})`);
         retries++;
       }
     }
   }
-
-  // for persistent payment failures, queries event-catalog to unreserve seat
-  if (!success) {
-    // await fetch(`${EVENT_CATALOG_URL}/unreserve-seats`, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({ eventId, seats }),
-    // });
-    // console.log('Payment failed after retries, unreserved seats and will promote waitlist job');
-
-    // TODO: message waitlist to promote job
-
-    return res.status(500).json({ message: 'Payment failed after retries' });
-  }
-  
-  // TODO: save purchase attempt to db
-
-  // // TODO: push job to fraud, notification, analytics channels
-  // client.lpush(FRAUD_QUEUE_NAME, JSON.stringify({}));
-  // client.lpush(ANALYTICS_QUEUE_NAME, JSON.stringify({}));
-  // client.publish(NOTIFICATION_PUBSUB_NAME, JSON.stringify({}));
-  // console.log('Pushed fraud, analytics, notification jobs to respective queues');
 });
 
 

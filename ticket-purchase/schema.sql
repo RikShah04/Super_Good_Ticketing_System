@@ -1,9 +1,11 @@
-CREATE TABLE events (
-    event_id    CHAR(36)       NOT NULL PRIMARY KEY,
-    name        VARCHAR(255)   NOT NULL,
-    venue       VARCHAR(255)   NOT NULL,
-    eventDate   TIMESTAMP      NOT NULL,
-    availableSeats INT         NOT NULL,
-    priceUsd    DECIMAL(10, 2) NOT NULL
+CREATE TABLE ticket_purchases (
+    id          SERIAL          NOT NULL PRIMARY KEY,
+    event_id    CHAR(36)        NOT NULL,
+    payment_id  CHAR(36),
+    seats       INT             NOT NULL,
+    charge      DECIMAL(10, 2),
+    status      VARCHAR(10)     NOT NULL CHECK (status IN ('success', 'failed', 'pending', 'refunded')),
+    reason      TEXT,
+    created_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
