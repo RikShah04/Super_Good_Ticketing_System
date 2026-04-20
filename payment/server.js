@@ -1,5 +1,6 @@
 import express from "express";
 import pg from 'pg';
+import crypto from 'crypto';
 
 const app = express();
 const port = 3001;
@@ -7,7 +8,7 @@ const port = 3001;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL })
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
 const startTime = Date.now();
 app.get('/health', async (req, res) => {
@@ -33,6 +34,78 @@ app.get('/health', async (req, res) => {
   }
 
   res.status(healthy ? 200 : 503).json(body)
+})
+
+async function returnProcessError(res, statusCode, errorMessage){
+  res.status(statusCode).json({
+      status: 'failure',
+      error: errorMessage,
+      timestamp: new Date().toISOString(),
+  })
+}
+
+/* Example JSON payload:
+    {
+      cc: "3790123453827313",
+      cvv: "123",
+      expiry: "10/27",
+      cardType: "Visa", (Types: Amex, Visa, or Master)
+      price: 100.00
+    }
+*/
+app.post('/process', async (req, res) => {
+
+  const paymentID = crypto.randomUUID();
+
+  const { cc, cvv, expiry, cardType, price} = req.body;
+
+  // Data validation
+  if(cc && (cc.length < 15)){
+    return returnProcessError(res, 400, 'Invalid CC');
+  }
+  if (cvv && (cvv.length !== 3 && cvv.length !== 4)){
+    return returnProcessError(res, 400, 'Invalid CVV');
+  }
+  if(expiry && (expiry.length != 5)){
+    return returnProcessError(res, 400, 'Invalid Expiry');
+  }
+  if (cardType && !['Amex', 'Visa', 'Master'].includes(cardType)){
+    return returnProcessError(res, 400, 'Invalid Card Type');
+  }
+  if(price && (price < 0)){
+    return returnProcessError(res, 400, 'Invalid Payment Amount');
+  }
+
+  console.log(`Processing Payment ${paymentID}...`);
+
+  // Sleep for 2 seconds simulating work
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // Create card token that simulates something returned from a service like Stripe
+  const paymentToken = 'tok_' + crypto.randomBytes(12).toString('hex');
+
+  // Store in DB
+  try{
+
+    pool.query(
+      `INSERT INTO payments (payment_id, token, price, status)
+       VALUES ($1, $2, $3, $4)`,
+      [paymentID, paymentToken, price, 'success']
+    );
+
+    console.log(`Payment ${paymentID} Processed!`);
+
+    return res.status(200).json({
+      status: 'success',
+      paymentID: paymentID,
+      paymentToken: paymentToken,
+      timestamp: new Date().toISOString(),
+    });
+
+  }catch(err){
+    return returnProcessError(res, 500, 'A server error occured when attempting to process payment');
+  }
+
 })
 
 app.listen(port, () => {
