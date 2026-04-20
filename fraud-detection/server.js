@@ -107,50 +107,73 @@ function validateJob(job) {
 }
 
 async function determineFraud(job) {
-  const amount = Number(job.amount)
+  const price = Number(job.price)
+  const seatCount = job.seats.length
+  const cardLast4 = getCardLast4(job.cc)
 
-  if (amount > HIGH_AMOUNT_THRESHOLD) {
-    return { flagged: true, reason: 'amount_over_threshold' }
+  if (price > HIGH_PRICE_THRESHOLD) {
+    return { flagged: true, reason: 'price_over_threshold' }
   }
 
-  // simple burst detection using Redis cache
-  const recentAttemptKey = `fraud:user:${job.userId}:attempts`
+  if (seatCount > MAX_SEATS_THRESHOLD) {
+    return { flagged: true, reason: 'too_many_seats' }
+  }
+
+  const recentAttemptKey = `fraud:card:${cardLast4}:attempts`
   const attempts = await redis.incr(recentAttemptKey)
   if (attempts === 1) {
     await redis.expire(recentAttemptKey, 60)
   }
 
-  if (attempts > 5) {
-    return { flagged: true, reason: 'too_many_attempts_in_60s' }
+  if (attempts > CARD_ATTEMPT_LIMIT) {
+    return { flagged: true, reason: 'too_many_attempts_same_card_last4' }
   }
 
   return { flagged: false, reason: 'passed_basic_rules' }
 }
 
 async function saveFraudResult(job, result) {
+  const cardLast4 = getCardLast4(job.cc)
+
   await pool.query(
     `
       INSERT INTO fraud_results
-        (client_order_id, user_id, amount, currency, flagged, reason, raw_event)
+        (payment_id, order_id, event_id, seat_count, seats, card_type, card_last4, price, flagged, reason, raw_event)
       VALUES
-        ($1, $2, $3, $4, $5, $6, $7)
-      ON CONFLICT (client_order_id)
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ON CONFLICT (payment_id)
       DO UPDATE SET
-        user_id = EXCLUDED.user_id,
-        amount = EXCLUDED.amount,
-        currency = EXCLUDED.currency,
+        order_id = EXCLUDED.order_id,
+        event_id = EXCLUDED.event_id,
+        seat_count = EXCLUDED.seat_count,
+        seats = EXCLUDED.seats,
+        card_type = EXCLUDED.card_type,
+        card_last4 = EXCLUDED.card_last4,
+        price = EXCLUDED.price,
         flagged = EXCLUDED.flagged,
         reason = EXCLUDED.reason,
         raw_event = EXCLUDED.raw_event
     `,
     [
-      job.clientOrderId,
-      job.userId,
-      Number(job.amount),
-      job.currency ?? 'USD',
+      job.paymentID,
+      job.orderID,
+      job.event_id,
+      job.seats.length,
+      JSON.stringify(job.seats),
+      job.cardType,
+      cardLast4,
+      Number(job.price),
       result.flagged,
       result.reason,
-      JSON.stringify(job),
+      JSON.stringify({
+        event_id: job.event_id,
+        seats: job.seats,
+        cardType: job.cardType,
+        price: Number(job.price),
+        paymentID: job.paymentID,
+        orderID: job.orderID,
+        cardLast4,
+      }),
     ]
   )
 }
