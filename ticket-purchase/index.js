@@ -70,6 +70,7 @@ app.get('/health', async (req, res) => {
 
 app.post('/purchase', async (req, res) => {
   const { eventId, seats, paymentInfo } = req.body;
+  const { cc, cvv, expiry, cardType } = paymentInfo;
   console.log('Received purchase request, querying event-catalog for seat availability');
 
   // queries event-catalog for seat
@@ -98,28 +99,36 @@ app.post('/purchase', async (req, res) => {
   const price = parseFloat(cost);
   console.log('Seat reserved');
 
-  // let success = false;
-  // let retries = 0;
+  let success = false;
+  let retries = 0;
   
-  // // query payments for purchase, with retries
-  // while (!success && retries < RETRIES) {
-  //   console.log('Querying payment service for purchase confirmation');
+  // query payments for purchase, with retries
+  while (!success && retries < RETRIES) {
+    console.log('Querying payment service for purchase confirmation');
 
-  //   const paymentRes = await fetch(`${PAYMENT_URL}/process`, {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/json' },
-  //     body: JSON.stringify({ paymentInfo, amount: seatData.price }),
-  //   });
-  //   const paymentData = await paymentRes.json();
+    const paymentRes = await fetch(`${PAYMENT_URL}/process`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cc, cvv, expiry, cardType, price }),
+    });
 
-  //   if (!paymentData.success) {
-  //     retries++;
-  //     console.log(`Payment failed, retrying (${retries}/${RETRIES}); reason: ${paymentData.error}`);
-  //     continue;
-  //   }
+    if (paymentRes.ok) {
+      console.log('Payment successful');
+      success = true;
+    }
+    else {
+      const paymentData = await paymentRes.json();
 
-  //   success = true;
-  // }
+      if (paymentRes.status === 400)
+        console.error(`Payment failed due to invalid data: ${paymentData.error}`);
+      else if (paymentRes.status >= 500)
+        console.error(`Payment service error: ${paymentData.error}`);
+
+      console.log(`Retrying (${retries}/${RETRIES})`);
+      retries++;
+      continue;
+    }
+  }
 
   // // for persistent payment failures, queries event-catalog to unreserve seat
   // // TODO: message waitlist to promote job
