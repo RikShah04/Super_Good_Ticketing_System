@@ -112,6 +112,30 @@ async function saveFraudResult(job, result) {
   )
 }
 
+async function publishFraudResult(job, result) {
+  const payload = {
+    clientOrderId: job.clientOrderId,
+    userId: job.userId,
+    flagged: result.flagged,
+    reason: result.reason,
+    processedAt: new Date().toISOString(),
+  }
+
+  await redis.set(
+    `${RESULT_KEY_PREFIX}${job.clientOrderId}`,
+    JSON.stringify(payload),
+    { EX: 3600 }
+  )
+
+  await redis.publish(RESULT_CHANNEL, JSON.stringify(payload))
+
+  if (result.flagged) {
+    await redis.publish(FLAGGED_CHANNEL, JSON.stringify(payload))
+  }
+
+  return payload
+}
+
 app.get('/health', async (req, res) => {
   const checks = {}
   let healthy = true
