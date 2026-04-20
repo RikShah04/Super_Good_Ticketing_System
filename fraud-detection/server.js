@@ -45,6 +45,45 @@ async function initDb() {
   `)
 }
 
+function validateJob(job) {
+  if (!job || typeof job !== 'object') {
+    throw new Error('job must be an object')
+  }
+
+  if (!job.clientOrderId) {
+    throw new Error('missing clientOrderId')
+  }
+
+  if (!job.userId) {
+    throw new Error('missing userId')
+  }
+
+  if (job.amount == null || Number.isNaN(Number(job.amount))) {
+    throw new Error('missing or invalid amount')
+  }
+}
+
+async function determineFraud(job) {
+  const amount = Number(job.amount)
+
+  if (amount > HIGH_AMOUNT_THRESHOLD) {
+    return { flagged: true, reason: 'amount_over_threshold' }
+  }
+
+  // simple burst detection using Redis cache
+  const recentAttemptKey = `fraud:user:${job.userId}:attempts`
+  const attempts = await redis.incr(recentAttemptKey)
+  if (attempts === 1) {
+    await redis.expire(recentAttemptKey, 60)
+  }
+
+  if (attempts > 5) {
+    return { flagged: true, reason: 'too_many_attempts_in_60s' }
+  }
+
+  return { flagged: false, reason: 'passed_basic_rules' }
+}
+
 app.get('/health', async (req, res) => {
   const checks = {}
   let healthy = true
