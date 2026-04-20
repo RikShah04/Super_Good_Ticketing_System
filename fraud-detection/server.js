@@ -180,15 +180,16 @@ async function saveFraudResult(job, result) {
 
 async function publishFraudResult(job, result) {
   const payload = {
-    clientOrderId: job.clientOrderId,
-    userId: job.userId,
+    paymentID: job.paymentID,
+    orderID: job.orderID,
+    event_id: job.event_id,
     flagged: result.flagged,
     reason: result.reason,
     processedAt: new Date().toISOString(),
   }
 
   await redis.set(
-    `${RESULT_KEY_PREFIX}${job.clientOrderId}`,
+    `${RESULT_KEY_PREFIX}${job.paymentID}`,
     JSON.stringify(payload),
     { EX: 3600 }
   )
