@@ -14,6 +14,7 @@ const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog
 const PAYMENT_URL = process.env.PAYMENT_URL || 'http://payment:3001';
 
 const RETRIES = process.env.RETRIES ? parseInt(process.env.RETRIES) : 3;
+const TTL_MIN = process.env.TTL_MIN ? parseInt(process.env.TTL_MIN) : 10;
 
 
 const app = express();
@@ -152,11 +153,29 @@ app.post('/purchase', async (req, res) => {
         [id, 'success']
       );
 
-      // // TODO: push job to fraud, notification, analytics channels
-      // console.log('Pushing fraud, analytics, notification jobs to respective queues');
-      // client.lpush(FRAUD_QUEUE_NAME, JSON.stringify({}));
-      // client.lpush(ANALYTICS_QUEUE_NAME, JSON.stringify({}));
-      // client.publish(NOTIFICATION_PUBSUB_NAME, JSON.stringify({}));
+      console.log('Pushing fraud, analytics, notification jobs to respective queues');
+      await client.lPush(
+        FRAUD_QUEUE_NAME,
+        JSON.stringify({
+          eventId,
+          paymentId: paymentData.paymentID,
+          orderId: id,
+          seats,
+          cc,
+          cardType,
+          price
+        }),
+        { EX: TTL_MIN * 60 }
+      );
+      await client.lPush(
+        ANALYTICS_QUEUE_NAME,
+        JSON.stringify({}),
+        { EX: TTL_MIN * 60 }
+      );
+      await client.publish(
+        NOTIFICATION_PUBSUB_NAME,
+        JSON.stringify({})
+      );
 
       console.log('Payment successful');
       return res.status(200).json({ message: 'Purchase successful' });
@@ -202,9 +221,3 @@ app.post('/purchase', async (req, res) => {
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
 });
-
-// app.get('/available_events', async (req, res) => {
-//   const response = await fetch(`${EVENT_CATALOG_URL}/events`);
-//   const events = await response.json();
-//   res.json(events);
-// });

@@ -324,6 +324,7 @@ services:
       - EVENT_CATALOG_URL=http://event-catalog:3005
       - PAYMENT_URL=http://payment:3001
       - RETRIES=3
+      - TTL_MIN=10
     depends_on:
       ticket-purchase-db:
         condition: service_healthy
