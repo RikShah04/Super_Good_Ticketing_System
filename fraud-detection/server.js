@@ -260,11 +260,20 @@ async function workerLoop() {
   }
 }
 
-app.listen(process.env.PORT ?? 3000, () => {
-  console.log(`[fraud-worker] listening on ${process.env.PORT ?? 3000}`)
-})
+async function start() {
+  await initDb()
 
-workerLoop().catch(err => {
-  console.error('[fraud-worker] startup error', err)
+  app.listen(process.env.PORT ?? 3000, () => {
+    console.log(`[fraud-worker] listening on ${process.env.PORT ?? 3000}`)
+  })
+
+  workerLoop().catch(err => {
+    console.error('[fraud-worker] startup error', err)
+    process.exit(1)
+  })
+}
+
+start().catch(err => {
+  console.error('[fraud-worker] failed to start', err)
   process.exit(1)
 })
