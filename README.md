@@ -285,10 +285,11 @@ curl "http://event-catalog:3005/events"
 ```
 GET /health
 
-  Returns a successful response from event-catalog if healthy, including the name of the service, a status, and the time of response.
+  Checks the status of Redis and the events-db. Returns a successful response from event-catalog if both are healthy, including the name of the service, a status, the time of response, and the status information of both Redis and the db. 
 
   Responses:
     200 Success - returns JSON object with healthy status and timestamp
+    503 One or more dependencies are unreachable
 ```
 **Example request:**
 
@@ -300,9 +301,17 @@ curl "http://event-catalog:3005/health"
 
 ```json
 {
+"status": "healthy",
+"service": "event-catalog",
+"timestamp": "2026-04-16T22:50:50.895Z",
+"redis": {
   "status": "healthy",
-  "service": "event-catalog",
-  "timestamp": "2026-04-14T13:12:49.346Z"
+  "latency_ms": 0
+},
+"database": {
+  "status": "healthy",
+  "latency_ms": 0
+}
 }
 ```
 

@@ -97,12 +97,39 @@ app.post("/reserve-seats", async (req, res) => {
     }
 });
 
+app.get('/health', async (_req, res) => {
+    let healthy = true;
+    let redisStats = {};
+    let dbStats = {};
 
-app.get('/health', (req, res) => {
-    res.status(200).json({
-        status: 'healthy',
+    //check Redis
+    const redisCheck = Date.now();
+    try{
+        const pong = await client.ping();
+        if (pong !== 'PONG') throw new Error(`Redis: Unexpected response: ${pong}`);
+
+        redisStats = { status: 'healthy', latency_ms: Date.now() - redisCheck };
+    } catch (err) {
+        redisStats = { status: 'unhealthy', error: err.message };
+        healthy = false;
+    }
+
+    // check events DB
+    const dbCheck = Date.now();
+    try {
+        await pool.query('SELECT 1');
+        dbStats = { status: 'healthy', latency_ms: Date.now() - dbCheck };
+    } catch (err) {
+        dbStats = { status: 'unhealthy', error: err.message };
+        healthy = false;
+    }
+
+    res.status(healthy ? 200 : 503).json({
+        status: healthy ? 'healthy' : 'unhealthy',
         service: SERVICE_NAME,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        redis: redisStats,
+        database: dbStats,
     });
 });
 
