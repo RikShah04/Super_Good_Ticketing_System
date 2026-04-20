@@ -5,7 +5,7 @@ const app = express();
 const port = Number(process.env.PORT || "3000");
 
 const redisUrl = process.env.REDIS_URL || "redis://redis:6379";
-const SUB_NAME = process.env.NOTIfICATION_SUB_KEY ?? 'notification:pubsub'
+const SUB_NAME = process.env.NOTIFICATION_SUB_KEY ?? 'notification:pubsub'
 const client = redis.createClient({ url: redisUrl })
 
 
