@@ -15,13 +15,15 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
 const QUEUE_NAME = process.env.FRAUD_QUEUE_KEY ?? 'fraud:queue'
 const DLQ_NAME = process.env.FRAUD_DLQ_KEY ?? `${QUEUE_NAME}:dlq`
-const RESULT_CHANNEL = process.env.FRAUD_FLAGGED_CHANNEL ?? 'fraud:flagged'
+const FLAGGED_CHANNEL = process.env.FRAUD_FLAGGED_CHANNEL ?? 'fraud:flagged'
+const RESULT_CHANNEL = process.env.FRAUD_RESULT_CHANNEL ?? 'fraud:result'
+const RESULT_KEY_PREFIX = process.env.FRAUD_RESULT_KEY_PREFIX ?? 'fraud:result:'
+const HIGH_AMOUNT_THRESHOLD = Number(process.env.FRAUD_HIGH_AMOUNT_THRESHOLD ?? 500)
 
 const startTime = Date.now()
 let lastJobAt = null
 let jobsProcessed = 0
 
-// Your worker loop sets these as it runs
 export function recordJobProcessed() {
   lastJobAt = new Date().toISOString()
   jobsProcessed++
@@ -34,7 +36,11 @@ async function initDb() {
       client_order_id TEXT UNIQUE NOT NULL,
       user_id TEXT,
       amount NUMERIC,
-      flagged BOOLEAN NOT NULL
+      currency TEXT,
+      flagged BOOLEAN NOT NULL,
+      reason TEXT NOT NULL,
+      raw_event JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `)
 }
