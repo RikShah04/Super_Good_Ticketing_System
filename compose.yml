@@ -93,7 +93,7 @@ services:
   #
 
   fraud-db:
-    image: postgres:16-alpine
+    image: postgres:16
     container_name: fraud-db
     restart: unless-stopped
     environment:
@@ -137,7 +137,7 @@ services:
       start_period: 15s
 
   analytics-db:
-    image: postgres:16-alpine
+    image: postgres:16
     container_name: analytics-db
     restart: unless-stopped
     environment:
