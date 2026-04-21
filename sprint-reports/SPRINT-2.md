@@ -45,12 +45,15 @@ The fraud worker and queue are running.
 
 | Metric | Sprint 1 Baseline | Sprint 2 Cached | Change |
 | ------ | ----------------- | --------------- | ------ |
-| p50    | | | |
-| p95    | | | |
-| p99    | | | |
-| RPS    | | | |
+| p50    | 3.45ms | 3.25ms | -0.20ms |
+| p95    | 6.02ms | 5.16ms | -0.86ms |
+| p99    | 8.6ms | 8.87ms | +0.27ms |
+| RPS    | 28.36 | 28.38 | +0.02 |
 
-[Explain the improvement. If the numbers did not improve, explain why and what you did to diagnose it.]
+
+The cached read test completed successfully and showed a small improvement at p50 and p95 latency. The change for p95 was significantly more than that of p50. Requests per second, though, basically stayed the same, increasing by 0.02.
+
+The improvement, in general though, was not super drastic. The p99 latency was slightly worse though not by much. The reasons I can account for this are that the endpoints are so fast already, which makes it hard for improvements to be seen. Another reason could be that with the current workload, the caching's effects are minimal.
 
 ### Test 2: Async Pipeline Burst (`k6/sprint-2-async.js`)
 
