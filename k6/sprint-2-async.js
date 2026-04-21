@@ -18,7 +18,7 @@ const errorRate = new Rate("errors");
 // ── Configuration ─────────────────────────────────────────────────────────────
 // Update this URL to point to your main read endpoint.
 // From inside the holmes container, use the service name (not localhost).
-const PURCHASE_URL = `$http://ticket-purchase:3000/purchase`;
+const PURCHASE_URL = `http://ticket-purchase:3000/purchase`;
 const WORKER_HEALTH_URL = "http://waitlist:3000/health";
 
 export const options = {
@@ -53,7 +53,7 @@ export default function () {
   const res = http.post(PURCHASE_URL, payload, params);
 
   const ok = check(res, {
-    "status is 200/400/409": (r) =>
+    "status is expected": (r) =>
         [200, 400, 404, 409].includes(r.status), // gives error codes that event ticketing uses to signal not enoguh seats, client-errored failure, and event not found
     "response time < 2s": (r) => r.timings.duration < 2000,
   });
