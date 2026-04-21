@@ -5,11 +5,10 @@ import { readFile } from 'node:fs/promises'
 
 const { Pool } = pg
 
-// This version is starter code from website
-// https://timdrichards.github.io/426sws/material/prj/docs/health/
 const app = express()
 const redis = createClient({ url: process.env.REDIS_URL })
 await redis.connect()
+// Keep a dedicated client for blocking BRPOP so health/LLEN checks stay responsive.
 const workerRedis = createClient({ url: process.env.REDIS_URL })
 await workerRedis.connect()
 const db = new Pool({ connectionString: process.env.DATABASE_URL })
@@ -22,12 +21,13 @@ const startTime = Date.now()
 let lastJobAt = null
 let jobsProcessed = 0
 
-// Your worker loop sets these as it runs
+
 export function recordJobProcessed() {
   lastJobAt = new Date().toISOString()
   jobsProcessed++
 }
 
+// Load and run the worker schema from disk so SQL stays in schema.sql.
 async function ensureSchema() {
   const schemaPath = new URL('./db/schema.sql', import.meta.url)
   const sql = await readFile(schemaPath, 'utf8')
@@ -39,6 +39,7 @@ async function ensureSchema() {
   await db.query(sql)
 }
 
+// Validate and normalize inbound queue messages before any writes.
 function validatePurchaseEvent(job) {
   if (!job || typeof job !== 'object') {
     throw new Error('event payload must be an object')
@@ -76,6 +77,7 @@ function validatePurchaseEvent(job) {
 }
 
 async function processPurchaseEvent(event) {
+  // First write is idempotent: duplicates are ignored by dedupe_key conflict handling.
   const inserted = await db.query(
     `INSERT INTO analytics_events
       (dedupe_key, event_type, source_service, event_id, order_id, payment_id, seats, price_usd, emitted_at, payload)
@@ -103,6 +105,7 @@ async function processPurchaseEvent(event) {
     return
   }
 
+  // Aggregate updates run only for first-seen events.
   await db.query(
     `INSERT INTO event_sales_aggregates (event_id, tickets_sold, gross_revenue, purchase_events, updated_at)
      VALUES ($1, $2, $3, 1, NOW())
@@ -119,6 +122,7 @@ async function processPurchaseEvent(event) {
   recordJobProcessed()
 }
 
+// Main consumer loop: block on queue, process valid jobs, DLQ invalid ones.
 async function mainAnalyticsLoop() {
   while (true) {
     const result = await workerRedis.brPop(QUEUE_NAME, 0)
