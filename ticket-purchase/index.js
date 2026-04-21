@@ -185,19 +185,31 @@ app.post('/purchase', async (req, res) => {
       await client.lPush(
         FRAUD_QUEUE_NAME,
         JSON.stringify({
-          eventId,
-          paymentId: paymentData.paymentID,
-          orderId: id,
+          eventID: eventId,
+          paymentID: paymentData.paymentID,
+          orderID: id,
+          paymentInfo: { cc, cardType },
           seats,
-          cc,
-          cardType,
-          price,
+          price
         })
       );
+
       await client.lPush(
         ANALYTICS_QUEUE_NAME,
-        JSON.stringify({})
+        JSON.stringify({
+          schemaVersion: 1,
+          eventType: 'purchase',
+          idemKey,
+          sourceService: SERVICE_NAME,
+          emittedAt: new Date().toISOString(),
+          eventId,
+          orderId: id,
+          paymentId: paymentData.paymentID,
+          seats,
+          priceUsd: price,
+        })
       );
+
       await client.publish(
         NOTIFICATION_PUBSUB_NAME,
         JSON.stringify({
