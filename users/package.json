@@ -3,5 +3,17 @@
     "version": "1.0.0",
     "description": "API service that manages user data.",
     "type": "module",
-    "main": "server.js"
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "author": "Jasper McCormack",
+    "license": "ISC",
+    "dependencies": {
+        "express": "^5.2.1",
+        "redis": "^5.8.2",
+        "pg": "^8.12.0",
+        "@faker-js/faker": "10.4.0",
+        "validator": "^13.15.35"
+    }
 }
