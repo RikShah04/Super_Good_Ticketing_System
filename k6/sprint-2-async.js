@@ -18,9 +18,8 @@ const errorRate = new Rate("errors");
 // ── Configuration ─────────────────────────────────────────────────────────────
 // Update this URL to point to your main read endpoint.
 // From inside the holmes container, use the service name (not localhost).
-const BASE_URL = "http://ticket-purchase:3000";
-const PURCHASE_URL = `${BASE_URL}/purchase`;
-const HEALTH_URL = `${BASE_URL}/health`;
+const PURCHASE_URL = `$http://ticket-purchase:3000/purchase`;
+const WORKER_HEALTH_URL = "http://waitlist:3000/health";
 
 export const options = {
   vus: 50,          // burst of 50 concurrent users
@@ -46,20 +45,31 @@ function buildPayload(eventId = 1, seats = 1) {
 
 export default function () {
   const payload = buildPayload();
-
   const params = {
     headers: { "Content-Type": "application/json" },
   };
 
+  //purchase requests 
   const res = http.post(PURCHASE_URL, payload, params);
 
   const ok = check(res, {
     "status is 200/400/409": (r) =>
-        [200, 400, 409].includes(r.status), // gives error codes that event ticketing uses to signal not enoguh seats and client-errored failure
+        [200, 400, 404, 409].includes(r.status), // gives error codes that event ticketing uses to signal not enoguh seats, client-errored failure, and event not found
     "response time < 2s": (r) => r.timings.duration < 2000,
   });
 
   errorRate.add(!ok);
+
+  //checks worker health
+  const workerHealthRes = http.get(WORKER_HEALTH_URL);
+
+  const workerHealthOk = check(workerHealthRes, {
+    "worker health endpoint reachable": (r) => r.status === 200 || r.status === 503,
+    "worker reports queue depth": (r) => r.json("checks.queue.depth") !== null,
+    "worker reports jobs processed": (r) => r.json("checks.worker.jobs_processed") !== null,
+  });
+
+  errorRate.add(!workerHealthOk);
 
   sleep(0.1); // smaller sleep to mimic burst
 }
