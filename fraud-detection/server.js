@@ -61,8 +61,8 @@ function validateJob(job) {
     throw new Error('job must be an object')
   }
 
-  if (!job.event_id) {
-    throw new Error('missing event_id')
+  if (!job.eventID){
+    throw new Error('missing eventID')
   }
 
   if (!job.paymentID) {
@@ -73,27 +73,23 @@ function validateJob(job) {
     throw new Error('missing orderID')
   }
 
-  if (!Array.isArray(job.seats)) {
-    throw new Error('seats must be an array')
-  }
+  if (!Number.isInteger(job.seats) || job.seats <= 0) {
+  throw new Error('seats must be a positive integer')
+  } 
 
-  if (job.seats.length === 0) {
-    throw new Error('seats cannot be empty')
-  }
-
-  if (!job.cc || typeof job.cc !== 'string') {
+  if (!job.paymentInfo?.cc || typeof job.paymentInfo.cc !== 'string') {
     throw new Error('missing or invalid cc')
   }
 
-  if (job.cc.length < 15 || job.cc.length > 16) {
+  if (job.paymentInfo.cc.length < 15 || job.paymentInfo.cc.length > 16) {
     throw new Error('cc must be a 15-16 digit string')
   }
 
-  if (!/^\d{15,16}$/.test(job.cc)) {
+  if (!/^\d{15,16}$/.test(job.paymentInfo.cc)) {
     throw new Error('cc must contain only digits')
   }
 
-  if (!job.cardType || !['Visa', 'Amex', 'Master'].includes(job.cardType)) {
+  if (!job.paymentInfo.cardType || !['Visa', 'Amex', 'Master'].includes(job.paymentInfo.cardType)) {
     throw new Error('invalid cardType')
   }
 
@@ -108,8 +104,8 @@ function validateJob(job) {
 
 async function determineFraud(job) {
   const price = Number(job.price)
-  const seatCount = job.seats.length
-  const cardLast4 = getCardLast4(job.cc)
+  const seatCount = job.seats
+  const cardLast4 = getCardLast4(job.paymentInfo.cc)
 
   if (price > HIGH_PRICE_THRESHOLD) {
     return { flagged: true, reason: 'price_over_threshold' }
@@ -157,18 +153,18 @@ async function saveFraudResult(job, result) {
     [
       job.paymentID,
       job.orderID,
-      job.event_id,
-      job.seats.length,
-      JSON.stringify(job.seats),
-      job.cardType,
+      job.eventID,
+      job.seats,
+      JSON.stringify({ seatCount: job.seats }),
+      job.paymentInfo.cardType,
       cardLast4,
       Number(job.price),
       result.flagged,
       result.reason,
       JSON.stringify({
-        event_id: job.event_id,
-        seats: job.seats,
-        cardType: job.cardType,
+        event_id: job.eventID,
+        seatCount: job.seats,
+        cardType: job.paymentInfo.cardType,
         price: Number(job.price),
         paymentID: job.paymentID,
         orderID: job.orderID,
@@ -182,7 +178,7 @@ async function publishFraudResult(job, result) {
   const payload = {
     paymentID: job.paymentID,
     orderID: job.orderID,
-    event_id: job.event_id,
+    event_id: job.eventID,
     flagged: result.flagged,
     reason: result.reason,
     processedAt: new Date().toISOString(),
@@ -292,9 +288,9 @@ async function workerLoop() {
           JSON.stringify({
             paymentID: job.paymentID,
             orderID: job.orderID,
-            event_id: job.event_id,
-            seatCount: job.seats.length,
-            cardType: job.cardType,
+            event_id: job.eventID,
+            seatCount: job.seats,
+            cardType: job.paymentInfo.cardType,
             price: Number(job.price),
             cardLast4: getCardLast4(job.cc),
           })
@@ -322,7 +318,7 @@ async function workerLoop() {
             originalJob: {
               paymentID: job?.paymentID,
               orderID: job?.orderID,
-              event_id: job?.event_id,
+              event_id: job?.eventID,
             },
             error: err.message,
             failedAt: new Date().toISOString(),
