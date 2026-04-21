@@ -175,9 +175,11 @@ app.post("/reserve-seats", async (req, res) => {
         );
 
         await db.query('COMMIT');
+        await client.del(`event:${event_id}`);
         return res.status(200).json({
             message: 'Purchase Successful!',
-            cost: event.priceusd,
+            seatCost: event.priceusd,
+            totalCost: event.priceusd * seats,
             seatsReserved: seats
         });
     } catch (err) {
@@ -188,6 +190,61 @@ app.post("/reserve-seats", async (req, res) => {
         db.release();
     }
 });
+
+app.post("/unreserve-seats", async (req, res) => {
+    const { event_id, seats } = req.body;
+
+    if (!event_id || !Number.isInteger(seats) || seats <= 0) {
+        return res.status(400).json({
+            message: 'Missing or invalid event_id or seats.'
+        });
+    }
+
+    const db = await pool.connect();
+    try {
+        await db.query('BEGIN');
+
+        const eventResult = await db.query(
+            'SELECT id, availableseats, priceusd, totalseats FROM eventcatalog WHERE id = $1 FOR UPDATE',
+            [event_id]
+        );
+
+        if (eventResult.rowCount === 0) {
+            await db.query('ROLLBACK');
+            return res.status(404).json({ message: 'Event not found.' });
+        }
+
+        const event = eventResult.rows[0];
+
+        if (event.availableseats + seats > event.totalseats) {
+            await db.query('ROLLBACK');
+            return res.status(400).json({
+                message: 'Cannot unreserve more seats than were originally reserved.'
+            });
+        }
+
+        await db.query(
+            'UPDATE eventcatalog SET availableseats = availableseats + $1 WHERE id = $2',
+            [seats, event_id]
+        );
+
+        await db.query('COMMIT');
+        await client.del(`event:${event_id}`);
+        return res.status(200).json({
+            message: 'Refund Successful!',
+            seatCost: event.priceusd,
+            totalRefund: event.priceusd * seats,
+            seatsUnreserved: seats
+        });
+    } catch (err) {
+        await db.query('ROLLBACK');
+        console.error('Failed to unreserve seats:', err.message);
+        return res.status(500).json({ message: 'Failed to unreserve seats.' });
+    } finally {
+        db.release();
+    }
+});
+
 
 app.get('/health', async (_req, res) => {
     let healthy = true;
