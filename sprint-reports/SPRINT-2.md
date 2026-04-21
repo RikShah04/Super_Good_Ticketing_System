@@ -24,6 +24,7 @@ The fraud worker and queue are running.
 | Ian Mei     | Added reserve seat endpoint, fetching events from database, updating seating, and saving it. Also updated the events endpoint. | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/34 |
 | Rikhav Shah      | subscribed notification to purchase events, simulate emails throught console logs| https://github.com/RikShah04/Super_Good_Ticketing_System/pull/36 |
 | Jonathan Zhang     | subscribed analytics to purchase events, define schema, add analytics to db | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/47 | 
+| Henry Branham      | added payment processing endpoint, generates payment token similar to Stripe, stores payment in db with respect to success/refund status | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/35 |
 ---
 
 ## What Is Working
