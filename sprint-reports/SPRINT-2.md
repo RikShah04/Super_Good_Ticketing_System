@@ -8,7 +8,9 @@
 
 ## What We Built
 
-[What cache did you add? What queue and worker are running? What does the async pipeline do?]
+[What cache did you add? What queue and worker are running? What does the async pipeline do?]  
+In event-catalog, the Redis cache is used for the GET /events endpoint and GET /events/:id endpoint to reduce repeated reads to the database.  
+A sample data script has been implemented to automatically fill the events-db with fake data.  
 
 ---
 
@@ -16,7 +18,7 @@
 
 | Team Member | What They Delivered | Key Commits |
 | ----------- | ------------------- | ----------- |
-| [Name]      | | |
+| [Jasper McCormack]      | events-db sample data, GET /events endpoint, GET /events/:id endpoint | 4f1ae18f1dacc15a1fef8269c217ec544fdf8181, 04c3760eb6e8fb3c8552f1bedc373cf549574ee6, 28e3cc46ceb1bb5e42097226ae09ad730ed1409b |
 | [Name]      | | |
 | [Name]      | | |
 
@@ -24,7 +26,7 @@
 
 ## What Is Working
 
-- [ ] Redis cache in use — repeated reads do not hit the database
+- [✓] Redis cache in use — repeated reads do not hit the database
 - [ ] Async pipeline works end-to-end (message published → worker consumes → action taken)
 - [ ] At least one write path is idempotent (same request twice produces same result)
 - [ ] Worker logs show pipeline activity in `docker compose logs`
