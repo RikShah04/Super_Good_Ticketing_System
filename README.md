@@ -280,6 +280,40 @@ curl "http://event-catalog:3005/events"
 }
 ```
 
+### GET /events/:id
+```
+GET /events/:id
+
+  Returns details for a single event. Served from the Redis cache when available; a cache miss falls through to the database.
+
+  Path:
+    id  string (UUID) The event's ID
+
+  Responses:
+    200 Success - returns event detail
+    400 Invalid ID format
+    404 No event found with that ID
+    503 Database or Redis unavailable
+```
+
+**Example request:**
+
+```bash
+curl http://event-catalog:3005/events/fb9220d9-b0fd-4322-8486-492457c38909
+```
+
+**Example response (200):**
+```json
+{
+  "id": "fb9220d9-b0fd-4322-8486-492457c38909",
+  "name": "Wintheiser World Tour",
+  "venue": "North Bryan Amphitheater",
+  "eventdate": "2026-01-21T00:00:00.000Z",
+  "totalseats": 3870,
+  "availableseats": 3870,
+  "priceusd": "274.16"
+}
+```
 ### GET /health
 
 ```
