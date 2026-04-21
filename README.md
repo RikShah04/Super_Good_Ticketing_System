@@ -12,7 +12,7 @@
 | Team Member | Files / Directories Owned This Sprint |
 | ----------- | ----------------------------------------------- |
 | Ian Mei, Ethan Pham | `ticket-purchase/`, `ticket-purchase/db/schema.sql`, `waitlist/` |
-| Jasper McCormack | `event-catalog/`,`event-catalog/db/schema.sql` |
+| Jasper McCormack | `event-catalog/db/schema.sql`, `event-catalog/seedEvents.js` |
 | Henry Branham | `payment/`, `k6/` |
 | Rikhav Shah | `notification/` |
 | Erika Lam | `refund/`, `refund/db/schema.sql` |
@@ -220,61 +220,65 @@ curl -s http://analytics:3000/health | jq .
 
 <!-- Add the rest of your endpoints below. One ### section per endpoint. -->
 
-### Event Catalog Service
+## Event Catalog Service
 
 ### GET /events
 
 ```
 GET /events
 
-  Incomplete: will return a list of events upon correct implementation. Currently, returns an empty JSON object.
+  Returns a paginated list of events. Served initially from the Redis cache when available; the cache is populated on first read and expires after 60s.
 
   Query:
-    TBD
+    page  integer optional  default=1   Page number, 1-indexed
+    limit integer optional  default=20  Events per page, max 100
+    venue string  optional  default=-   Filter by venue name, or partial match
 
   Responses:
-    200  Success — returns empty JSON object
+    200   Success — returns list of events
+    503   Database or Redis unavailable
 ```
 
 **Example request:**
 
 ```bash
-curl "http://event-catalog:3005/events"
+curl "http://event-catalog:3005/events?page=1&limit=3"
 ```
 
-**Current example response (200):**
-```
-{}
-```
-
-**Goal example response (200):**
+**Example response (200):**
 
 ```json
 {
+  "page": 1,
+  "limit": 3,
+  "total": 50,
   "events": [
     {
-      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "name": "Castellan World Tour",
-      "venue": "Portland Arena",
-      "eventDate": "2025-08-15T20:00:00Z",
-      "availableSeats": 312,
-      "priceUsd": 89.99
+      "id": "1654b713-a1d7-479d-85a9-4ecaddbdba9c",
+      "name": "Barrows World Tour",
+      "venue": "West Rolandohaven Stadium",
+      "eventdate": "2026-01-04T00:00:00.000Z",
+      "totalseats": 5598,
+      "availableseats": 5598,
+      "priceusd": "96.80"
     },
     {
-      "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
-      "name": "Summer Festival",
-      "venue": "Boston Common",
-      "eventDate": "2025-07-04T18:00:00Z",
-      "availableSeats": 4200,
-      "priceUsd": 45.0
+      "id": "5accc6d1-8055-46b6-9735-319a976d8705",
+      "name": "Lesch Live",
+      "venue": "Wilkinsontown Arena",
+      "eventdate": "2026-01-05T00:00:00.000Z",
+      "totalseats": 4160,
+      "availableseats": 4160,
+      "priceusd": "199.53"
     },
     {
-      "id": "066de609-b04a-4b30-b46c-32537c7f1f6e",
-      "name": "Jazz Night Live",
-      "venue": "New York Jazz Center",
-      "eventDate": "2025-09-01T19:30:00Z",
-      "availableSeats": 0,
-      "priceUsd": 120.0
+      "id": "296fdd76-40dd-4ff8-bcfd-372f93a951a8",
+      "name": "Lueilwitz Live",
+      "venue": "Homestead Arena",
+      "eventdate": "2026-01-18T00:00:00.000Z",
+      "totalseats": 9876,
+      "availableseats": 9876,
+      "priceusd": "230.22"
     }
   ]
 }
