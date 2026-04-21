@@ -2,7 +2,7 @@
 
 **Sprint:** 2 — Async Pipelines and Caching  
 **Tag:** `sprint-2`  
-**Submitted:** [date, before 04.21 class]
+**Submitted:** 4/21/26
 
 ---
 
@@ -21,7 +21,7 @@ The fraud worker and queue are running.
 | ----------- | ------------------- | ----------- |
 | [Jasper McCormack]      | events-db sample data, GET /events endpoint, GET /events/:id endpoint | 4f1ae18f1dacc15a1fef8269c217ec544fdf8181, 04c3760eb6e8fb3c8552f1bedc373cf549574ee6, 28e3cc46ceb1bb5e42097226ae09ad730ed1409b |
 | James Rust      | Implemented fraud detection worker service, Redis queue consumption (fraud:queue), fraud detection logic (price threshold, seat count, repeated card attempts), Postgres persistence (fraud_results table), Redis result publishing and caching, DLQ handling | 1eab8ac, 4ca410b |
-| [Name]      | | |
+| Ian Mei     | Added reserve seat endpoint, fetching events from database, updating seating, and saving it. Also updated the events endpoint. | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/34 |
 | Rikhav Shah      | subscribed notification to purchase events, simulate emails throught console logs| https://github.com/RikShah04/Super_Good_Ticketing_System/pull/36 |
 ---
 
