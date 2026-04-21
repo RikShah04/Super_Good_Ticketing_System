@@ -167,11 +167,24 @@ app.post('/purchase', async (req, res) => {
         }),
         { EX: TTL_MIN * 60 }
       );
+
+      const analyticsEvent = {
+        schemaVersion: 1,
+        eventType: 'purchase',
+        dedupeKey: `purchase:${id}`,
+        sourceService: SERVICE_NAME,
+        emittedAt: new Date().toISOString(),
+        eventId,
+        orderId: id,
+        paymentId: paymentData.paymentID,
+        seats,
+        priceUsd: price,
+      };
       await client.lPush(
         ANALYTICS_QUEUE_NAME,
-        JSON.stringify({}),
-        { EX: TTL_MIN * 60 }
+        JSON.stringify(analyticsEvent)
       );
+
       await client.publish(
         NOTIFICATION_PUBSUB_NAME,
         JSON.stringify({})
