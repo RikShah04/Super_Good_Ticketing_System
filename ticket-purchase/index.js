@@ -142,8 +142,8 @@ app.post('/purchase', async (req, res) => {
     return res.status(500).json({ message: 'Event-catalog service error' });
   }
 
-  const { message, cost, seatsReserved } = await seatRes.json();
-  const price = parseFloat(cost);
+  const { message, seatCost, totalCost, seatsReserved } = await seatRes.json();
+  const price = parseFloat(seatCost);
   console.log('Seat reserved');
 
   // update db log with price
