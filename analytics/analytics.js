@@ -138,8 +138,15 @@ async function mainAnalyticsLoop() {
       const event = validatePurchaseEvent(parsed);
       await processPurchaseEvent(event);
     } catch (err) {
-      console.error(`[analytics-worker] moved bad job to DLQ: ${err.message}`);
-      await redis.lPush(DLQ_NAME, result.element);
+      console.error(`[analytics-worker] bad job (${err.message}): ${result.element}`);
+
+      // Extra careful try catch within DLQ write
+      try {
+        await redis.lPush(DLQ_NAME, result.element);
+        console.error(`[analytics-worker] moved bad job to DLQ`);
+      } catch (dlqErr) {
+        console.error(`[analytics-worker] FAILED to write to DLQ: ${dlqErr.message}`);
+      }
     }
   }
 }
@@ -174,11 +181,10 @@ app.get('/health', async (req, res) => {
     const depth = await redis.lLen(QUEUE_NAME);
     const dlqDepth = await redis.lLen(DLQ_NAME);
     checks.queue = {
-      status: depth < 1000 ? 'healthy' : 'degraded',
+      status: depth < 1000 && dlqDepth === 0 ? 'healthy' : 'degraded',
       depth,
       dlq_depth: dlqDepth,
     };
-    if (dlqDepth > 0) checks.queue.status = 'degraded'; // any DLQ entries are worth surfacing
   } catch (err) {
     checks.queue = { status: 'unhealthy', error: err.message };
     healthy = false;
