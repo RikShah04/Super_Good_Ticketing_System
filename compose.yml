@@ -124,6 +124,11 @@ services:
       - FRAUD_QUEUE_KEY=fraud:queue
       - FRAUD_DLQ_KEY=fraud:dlq
       - FRAUD_FLAGGED_CHANNEL=fraud:flagged
+      - FRAUD_RESULT_CHANNEL=fraud:result
+      - "FRAUD_RESULT_KEY_PREFIX=fraud:result:"
+      - FRAUD_HIGH_PRICE_THRESHOLD=500
+      - FRAUD_MAX_SEATS_THRESHOLD=6
+      - FRAUD_CARD_ATTEMPT_LIMIT=4
     depends_on:
       fraud-db:
         condition: service_healthy
