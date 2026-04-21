@@ -8,10 +8,12 @@
 
 ## What We Built
 
-[What cache did you add? What queue and worker are running? What does the async pipeline do?]  
-In event-catalog, the Redis cache is used for the GET /events endpoint and GET /events/:id endpoint to reduce repeated reads to the database.  
-A sample data script has been implemented to automatically fill the events-db with fake data.  
-The fraud worker and queue are running.
+[What cache did you add? What queue and worker are running? What does the async pipeline do?] 
+
+- In event-catalog, the Redis cache is used for the GET /events endpoint and GET /events/:id endpoint to reduce repeated reads to the database.  
+- A sample data script has been implemented to automatically fill the events-db with fake data.
+- The ticket-purchase orchestrates an order. It reserves a seat through event-catalog, submits a purchase to the payment service, and pushes jobs to fraud-detection, notifications, and analytics.
+- The fraud worker and queue are running.
 
 ---
 
@@ -25,19 +27,21 @@ The fraud worker and queue are running.
 | Rikhav Shah      | subscribed notification to purchase events, simulate emails throught console logs| https://github.com/RikShah04/Super_Good_Ticketing_System/pull/36 |
 | Jonathan Zhang     | subscribed analytics to purchase events, define schema, add analytics to db | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/47 | 
 | Henry Branham      | added payment processing endpoint, generates payment token similar to Stripe, stores payment in db with respect to success/refund status | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/35 |
+| Ethan Pham | Built ticket-purchase /purchase endpoint, which calls ticket-purchase /reserve-seats and payment /process for synchronous processing, and pushes to fraud:queue, analytics:queue, and notification:pubsub for background workers. | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/37 |
 ---
 
 ## What Is Working
 
 - [✓] Redis cache in use — repeated reads do not hit the database
-- [ ] Async pipeline works end-to-end (message published → worker consumes → action taken)
-- [ ] At least one write path is idempotent (same request twice produces same result)
-- [x] Worker logs show pipeline activity in `docker compose logs`
-- [x] Worker `GET /health` returns queue depth, DLQ depth, and last-job-at
+- [✓] Async pipeline works end-to-end (message published → worker consumes → action taken)
+- [✓] At least one write path is idempotent (same request twice produces same result)
+- [✓] Worker logs show pipeline activity in `docker compose logs`
 
 ---
 
 ## What Is Not Working / Cut
+
+We did not update our workers' /health endpoints with the queue and DLQ depth simply because we ran out of time. Still, we overall planned much better than in Sprint 1 and only had to cut a very small change for a few people.
 
 ---
 
