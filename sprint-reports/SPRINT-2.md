@@ -19,7 +19,7 @@
 | [Name]      | | |
 | [Name]      | | |
 | [Name]      | | |
-
+| Rikhav Shah      | subscribed notification to purchase events, simulate emails throught console logs| https://github.com/RikShah04/Super_Good_Ticketing_System/pull/36 |
 ---
 
 ## What Is Working
