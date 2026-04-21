@@ -108,6 +108,38 @@ app.post('/process', async (req, res) => {
 
 })
 
+/* Example JSON payload:
+    {
+      paymentID: "3f8a7c2e-91d4-4b6f-a9c1-5e2d7f8a1b3c"
+    }
+*/
+app.post('/refund', async (req, res) => {
+  const { paymentID} = req.body;
+
+  try{
+    const result = await pool.query(
+      `UPDATE payments
+      SET status = $1, updated_at = CURRENT_TIMESTAMP
+      WHERE payment_id = $2
+      RETURNING *`,
+      ['refunded', paymentID]
+    );
+
+    if (result.rowCount === 0) {
+      return returnProcessError(res, 400, 'Payment ID Not Found');
+    } else {
+      return res.status(200).json({
+        status: 'refunded',
+        paymentID: paymentID,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }catch(err){
+    return returnProcessError(res, 500, 'A server error occured when attempting to process payment');
+  }
+
+})
+
 app.listen(port, () => {
   console.log(`Payment Service API running on port ${port}`);
 });
