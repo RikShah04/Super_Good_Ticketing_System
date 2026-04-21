@@ -79,6 +79,7 @@ services:
       POSTGRES_PASSWORD: supersecurepassword123
       POSTGRES_DB: payments
     volumes:
+      - ./payment/schema.sql:/docker-entrypoint-initdb.d/schema.sql
       - payment-db-data:/var/lib/postgresql/data
     networks:
       - team-net
@@ -317,6 +318,14 @@ services:
       - DATABASE_URL=postgres://user:pass@ticket-purchase-db:5432/ticket-purchase-db
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=ticket-purchase
+      - FRAUD_QUEUE_NAME=fraud:queue
+      - ANALYTICS_QUEUE_NAME=analytics:queue
+      - WAITLIST_QUEUE_NAME=waitlist:queue
+      - NOTIFICATION_PUBSUB_NAME=notification:pubsub
+      - EVENT_CATALOG_URL=http://event-catalog:3005
+      - PAYMENT_URL=http://payment:3001
+      - RETRIES=3
+      - TTL_MIN=10
     depends_on:
       ticket-purchase-db:
         condition: service_healthy
@@ -338,8 +347,8 @@ services:
     environment:
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=waitlist-worker
-      - QUEUE_NAME=waitlist-jobs
-      - DLQ_NAME=waitlist-jobs:dlq
+      - QUEUE_NAME=waitlist:queue
+      - DLQ_NAME=waitlist:dlq
     depends_on:
       redis:
         condition: service_healthy
@@ -359,6 +368,7 @@ services:
       POSTGRES_PASSWORD: pass
       POSTGRES_DB: ticket-purchase-db
     volumes:
+      - ./ticket-purchase/schema.sql:/docker-entrypoint-initdb.d/schema.sql
       - ticket-purchase-db-data:/var/lib/postgresql/data
     networks:
       - team-net
