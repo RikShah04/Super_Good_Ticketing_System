@@ -74,15 +74,15 @@ For this sprint, we will be adding DLQs and poison pill handling to the workers 
 ### Erika
 
 - [ ] Refund Process:
-      - [ ] idempotent
-      - [ ] requires purchaseId, seats
-      - [ ] calls ticket-purchase /verify to verify purchaseId, validate seats
-      - [ ] ticket-purchase /verify returns eventId, paymentId
-      - [ ] calls payment with paymentId to refund purchase
-      - [ ] calls event-catalog /unreserve_seats with eventId to unreserve seat
-      - [ ] push for analytics, notifications, waitlist
+      - idempotent
+      - requires purchaseId, seats
+      - calls ticket-purchase /verify to verify purchaseId, validate seats
+      - ticket-purchase /verify returns eventId, paymentId
+      - calls payment with paymentId to refund purchase
+      - calls event-catalog /unreserve_seats with eventId to unreserve seat
+      - push for analytics, notifications, waitlist
         - sends { type: 'refund' } to notifications
-      - [ ] stores refund details in db (id, purchaseId, eventId, paymentId, seats, price, etc.)
+      - stores refund details in db (id, purchaseId, eventId, paymentId, seats, price, etc.)
 ---
 
 ## Risks
