@@ -291,7 +291,7 @@ app.post('/verify', async (req, res) => {
   );
 
   if (dbRes.rows.length === 0)
-    res.status(404).json({ message: 'Purchase not found' });
+    return res.status(404).json({ message: 'Purchase not found' });
   const purchase = dbRes.rows[0];
 
   if (purchase.seats < seats)
