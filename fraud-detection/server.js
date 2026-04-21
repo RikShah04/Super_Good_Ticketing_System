@@ -129,7 +129,7 @@ async function determineFraud(job) {
 }
 
 async function saveFraudResult(job, result) {
-  const cardLast4 = getCardLast4(job.cc)
+  const cardLast4 = getCardLast4(job.paymentInfo.cc)
 
   await pool.query(
     `
@@ -292,7 +292,7 @@ async function workerLoop() {
             seatCount: job.seats,
             cardType: job.paymentInfo.cardType,
             price: Number(job.price),
-            cardLast4: getCardLast4(job.cc),
+            cardLast4: getCardLast4(job.paymentInfo.cc),
           })
         )
 
