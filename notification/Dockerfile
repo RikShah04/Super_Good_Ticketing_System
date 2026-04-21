@@ -1,4 +1,4 @@
-FROM node:25-alpine
+FROM node:22-alpine
 WORKDIR /notification
 COPY package*.json ./
 RUN npm install
