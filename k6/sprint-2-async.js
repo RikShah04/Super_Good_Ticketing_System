@@ -30,8 +30,9 @@ export const options = {
   },
 };
 
-function buildPayload(eventId = 1, seats = 1) {
+function buildPayload(idemKey, eventId = "fb9220d9-b0fd-4322-8486-492457c38909", seats = 1) {
   return JSON.stringify({
+    idemKey,
     eventId,
     seats,
     paymentInfo: {
@@ -44,7 +45,9 @@ function buildPayload(eventId = 1, seats = 1) {
 }
 
 export default function () {
-  const payload = buildPayload();
+  const idemKey = `purchase-${__VU}-${__ITER}`;
+
+  const payload = buildPayload(idemKey);
   const params = {
     headers: { "Content-Type": "application/json" },
   };
@@ -59,6 +62,20 @@ export default function () {
   });
 
   errorRate.add(!ok);
+
+  //duplicate request with SAME idemKey
+  const dupRes = http.post(PURCHASE_URL, payload, params);
+
+  const duplicateOk = check(dupRes, {
+    "duplicate returned expected status": (r) =>
+      [200, 400, 404, 409, 500].includes(r.status),
+    "duplicate response has message": (r) => {
+      const msg = r.json("message");
+      return typeof msg === "string" && msg.length > 0;
+    },
+  });
+
+  errorRate.add(!duplicateOk);
 
   //checks worker health
   const workerHealthRes = http.get(WORKER_HEALTH_URL);
