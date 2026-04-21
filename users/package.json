@@ -1,0 +1,7 @@
+{
+    "name": "user-service",
+    "version": "1.0.0",
+    "description": "API service that manages user data.",
+    "type": "module",
+    "main": "server.js"
+}
