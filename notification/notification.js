@@ -5,7 +5,10 @@ const app = express();
 const port = Number(process.env.PORT || "3000");
 
 const redisUrl = process.env.REDIS_URL || "redis://redis:6379";
+const SUB_NAME = process.env.NOTIFICATION_SUB_KEY ?? 'notification:pubsub'
 const client = redis.createClient({ url: redisUrl })
+
+
 
 const startTime = Date.now()
 
@@ -52,7 +55,14 @@ app.get('/health', async (req, res) => {
   res.status(healthy ? 200 : 503).json(body)
 })
 
+async function sendNotification(data) {
+  console.log(data)
+}
+
 await client.connect();
+await client.subscribe(SUB_NAME, (msg) => {
+  sendNotification(JSON.parse(msg));
+});
 
 app.listen(port, () => {
     console.log(`Notification service listening on port ${port}`);
