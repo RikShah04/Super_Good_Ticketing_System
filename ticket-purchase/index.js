@@ -282,6 +282,24 @@ app.post('/purchase', async (req, res) => {
   }
 });
 
+app.post('/verify', async (req, res) => {
+  const { purchaseId, seats } = req.body;
+  
+  const dbRes = await db.query(
+    'SELECT * FROM ticket_purchases WHERE id = $1',
+    [purchaseId]
+  );
+
+  if (dbRes.rows.length === 0)
+    res.status(404).json({ message: 'Purchase not found' });
+  const purchase = dbRes.rows[0];
+
+  if (purchase.seats < seats)
+    return res.status(400).json({ message: 'Not enough seats available' });
+
+  res.status(200).json({ purchase });
+});
+
 
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
