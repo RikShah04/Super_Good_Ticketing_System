@@ -216,6 +216,7 @@ app.post('/purchase', async (req, res) => {
           eventId,
           paymentId: paymentData.paymentID,
           orderId: id,
+          type: 'purchase',
           seats,
           cc,
           cardType,
