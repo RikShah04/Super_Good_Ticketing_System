@@ -49,8 +49,13 @@ function validatePurchaseEvent(job) {
     throw new Error(`unsupported eventType: ${job.eventType}`)
   }
 
-  if (!job.dedupeKey || !job.eventId || !job.orderId || !job.emittedAt) {
-    throw new Error('missing one of required fields: dedupeKey, eventId, orderId, emittedAt')
+  if (!job.idemKey || !job.eventId || !job.orderId || !job.emittedAt) {
+    throw new Error('missing one of required fields: idemKey, eventId, orderId, emittedAt')
+  }
+
+  const idemKey = String(job.idemKey).trim()
+  if (!idemKey) {
+    throw new Error('idemKey must be a non-empty string')
   }
 
   const seats = Number(job.seats)
@@ -63,7 +68,7 @@ function validatePurchaseEvent(job) {
   }
 
   return {
-    dedupeKey: String(job.dedupeKey),
+    idemKey,
     eventType: String(job.eventType),
     sourceService: String(job.sourceService ?? 'unknown'),
     eventId: String(job.eventId),
@@ -77,16 +82,16 @@ function validatePurchaseEvent(job) {
 }
 
 async function processPurchaseEvent(event) {
-  // First write is idempotent: duplicates are ignored by dedupe_key conflict handling.
+  // First write is idempotent: duplicates are ignored by idem_key conflict handling.
   const inserted = await db.query(
     `INSERT INTO analytics_events
-      (dedupe_key, event_type, source_service, event_id, order_id, payment_id, seats, price_usd, emitted_at, payload)
+      (idem_key, event_type, source_service, event_id, order_id, payment_id, seats, price_usd, emitted_at, payload)
      VALUES
       ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
-     ON CONFLICT (dedupe_key) DO NOTHING
-     RETURNING dedupe_key`,
+     ON CONFLICT (idem_key) DO NOTHING
+     RETURNING idem_key`,
     [
-      event.dedupeKey,
+      event.idemKey,
       event.eventType,
       event.sourceService,
       event.eventId,
@@ -100,7 +105,7 @@ async function processPurchaseEvent(event) {
   )
 
   if (inserted.rowCount === 0) {
-    console.log(`[analytics-worker] duplicate ignored ${event.dedupeKey}`)
+    console.log(`[analytics-worker] duplicate ignored ${event.idemKey}`)
     recordJobProcessed()
     return
   }
@@ -118,7 +123,7 @@ async function processPurchaseEvent(event) {
     [event.eventId, event.seats, event.priceUsd]
   )
 
-  console.log(`[analytics-worker] processed purchase ${event.dedupeKey}`)
+  console.log(`[analytics-worker] processed purchase ${event.idemKey}`)
   recordJobProcessed()
 }
 

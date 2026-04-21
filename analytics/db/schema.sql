@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS analytics_events (
-	dedupe_key      TEXT PRIMARY KEY,
+	idem_key        TEXT PRIMARY KEY,
 	event_type      TEXT NOT NULL,
 	source_service  TEXT NOT NULL,
 	event_id        TEXT NOT NULL,
@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 	payload         JSONB NOT NULL,
 	processed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_analytics_events_idem_key
+	ON analytics_events (idem_key);
 
 CREATE TABLE IF NOT EXISTS event_sales_aggregates (
 	event_id         TEXT PRIMARY KEY,

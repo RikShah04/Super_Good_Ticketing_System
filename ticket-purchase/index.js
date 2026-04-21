@@ -77,9 +77,37 @@ app.post('/purchase', async (req, res) => {
     );
   };
 
-  const { eventId, seats, paymentInfo } = req.body;
+  const { eventId, seats, paymentInfo, idemKey } = req.body;
   const { cc, cvv, expiry, cardType } = paymentInfo;
   console.log('Received purchase request, querying event-catalog for seat availability');
+
+  // claim job for idempotency
+  const claimed = await client.set(`purchase-idem:${idemKey}`, '1', { NX: true, EX: TTL_MIN * 60 });
+  if (!claimed) {
+    const jobState = await client.hGet(`purchase-data:${idemKey}`, 'state');
+
+    if (jobState === 'processing') {
+      console.log(`Job with idempotency key ${idemKey} is still processing`);
+      return res.status(409).json({ message: 'Duplicate detected; request still processing' });
+    }
+    else {
+      console.log(`Job with idempotency key ${idemKey} already completed with status '${jobState}'`);
+
+      const responseStr = await client.hGet(`purchase-data:${idemKey}`, 'response');
+      const response = responseStr ? JSON.parse(responseStr) : {};
+      const statusCode = await client.hGet(`purchase-data:${idemKey}`, 'status');
+      const status = statusCode ? parseInt(statusCode) : (jobState === 'success' ? 200 : 500);
+
+      return res.status(status).json({ message: `Duplicate detected; previous request completed with status ${jobState}`, ...response });
+    }
+  }
+
+  // initialize idempotency key data
+  await client.hSet(`purchase-data:${idemKey}`, {
+    'state': 'processing',
+    'status': '',
+    'response': '',
+  });
 
   // start db log
   const dbRow = await db.query(
@@ -164,14 +192,13 @@ app.post('/purchase', async (req, res) => {
           cc,
           cardType,
           price
-        }),
-        { EX: TTL_MIN * 60 }
+        })
       );
 
       const analyticsEvent = {
         schemaVersion: 1,
         eventType: 'purchase',
-        dedupeKey: `purchase:${id}`,
+        idemKey,
         sourceService: SERVICE_NAME,
         emittedAt: new Date().toISOString(),
         eventId,
@@ -180,6 +207,7 @@ app.post('/purchase', async (req, res) => {
         seats,
         priceUsd: price,
       };
+
       await client.lPush(
         ANALYTICS_QUEUE_NAME,
         JSON.stringify(analyticsEvent)
@@ -187,8 +215,23 @@ app.post('/purchase', async (req, res) => {
 
       await client.publish(
         NOTIFICATION_PUBSUB_NAME,
-        JSON.stringify({})
+        JSON.stringify({
+          eventId,
+          paymentId: paymentData.paymentID,
+          orderId: id,
+          seats,
+          cc,
+          cardType,
+          price,
+        })
       );
+
+      // update idempotency key with response
+      await client.hSet(`purchase-data:${idemKey}`, {
+        'state': 'success',
+        'status': '200',
+        'response': JSON.stringify({ message: 'Purchase successful' })
+      });
 
       console.log('Payment successful');
       return res.status(200).json({ message: 'Purchase successful' });
@@ -199,7 +242,14 @@ app.post('/purchase', async (req, res) => {
       // on client errors, fail
       if (paymentRes.status === 400) {
         console.error('Invalid payment data');
+
         await markFailed(id, 'Invalid payment data');
+        await client.hSet(`purchase-data:${idemKey}`, {
+          'state': 'failed',
+          'status': '400',
+          'response': JSON.stringify({ message: 'Invalid payment data' }),
+        });
+
         return res.status(400).json({ message: 'Invalid payment data' });
       }
 
@@ -210,6 +260,11 @@ app.post('/purchase', async (req, res) => {
         // for persistent payment failures, queries event-catalog to unreserve seat and ends
         if (retries >= RETRIES) {
           await markFailed(id, 'Payment service error after retries');
+          await client.hSet(`purchase-data:${idemKey}`, {
+            'state': 'failed',
+            'status': '500',
+            'response': JSON.stringify({ message: 'Payment service error after retries' }),
+          });
 
           // await fetch(`${EVENT_CATALOG_URL}/unreserve-seats`, {
           //   method: 'POST',
