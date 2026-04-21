@@ -28,6 +28,7 @@
 | Jonathan Zhang     | subscribed analytics to purchase events, define schema, add analytics to db | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/47 | 
 | Henry Branham      | added payment processing endpoint, generates payment token similar to Stripe, stores payment in db with respect to success/refund status | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/35 |
 | Ethan Pham | Built ticket-purchase /purchase endpoint, which calls ticket-purchase /reserve-seats and payment /process for synchronous processing, and pushes to fraud:queue, analytics:queue, and notification:pubsub for background workers. | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/37 |
+| Erika Lam | Added k6 cache, comparing with old k6 times, and k6 async, which also checks idempotency and the waitlist worker heallth | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/46 |
 ---
 
 ## What Is Working
