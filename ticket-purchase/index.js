@@ -142,8 +142,8 @@ app.post('/purchase', async (req, res) => {
     return res.status(500).json({ message: 'Event-catalog service error' });
   }
 
-  const { message, cost, seatsReserved } = await seatRes.json();
-  const price = parseFloat(cost);
+  const { message, seatCost, totalCost, seatsReserved } = await seatRes.json();
+  const price = parseFloat(seatCost);
   console.log('Seat reserved');
 
   // update db log with price
@@ -216,6 +216,7 @@ app.post('/purchase', async (req, res) => {
           eventId,
           paymentId: paymentData.paymentID,
           orderId: id,
+          type: 'purchase',
           seats,
           cc,
           cardType,
@@ -280,6 +281,24 @@ app.post('/purchase', async (req, res) => {
       }
     }
   }
+});
+
+app.post('/verify', async (req, res) => {
+  const { purchaseId, seats } = req.body;
+  
+  const dbRes = await db.query(
+    'SELECT * FROM ticket_purchases WHERE id = $1',
+    [purchaseId]
+  );
+
+  if (dbRes.rows.length === 0)
+    return res.status(404).json({ message: 'Purchase not found' });
+  const purchase = dbRes.rows[0];
+
+  if (purchase.seats < seats)
+    return res.status(400).json({ message: 'Not enough seats available' });
+
+  res.status(200).json({ purchase });
 });
 
 
