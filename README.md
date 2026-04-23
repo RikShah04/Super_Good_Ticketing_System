@@ -613,6 +613,41 @@ docker compose exec holmes curl http://notification:3001/health
 }
 ```
 
+## Users
+
+### GET /health
+
+```
+GET /health
+
+  Returns the health status of the users service, including:
+    - database connectivity
+  
+  Responses
+    200 Service is healthy
+    503 Service is unhealthy (one or more dependencies failing)
+```
+
+**Example Request**
+
+```bash
+  docker compose exec holmes curl http://users:3006/health
+```
+
+**Example Response(200)**
+
+```json
+{
+  "status": "healthy",
+  "service": "users",
+  "timestamp": "2026-04-23T14:39:08.969Z",
+  "database": {
+    "status": "healthy",
+    "latency_ms": 7
+  }
+}
+```
+
 ---
 
 ## Sprint History
