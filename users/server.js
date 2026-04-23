@@ -3,6 +3,7 @@ import redis from 'redis';
 import pg from 'pg';
 
 const app = express();
+const port = Number(process.env.PORT || '3006');
 const SERVICE_NAME = process.env.SERVICE_NAME || 'users';
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgres://user:pass@users-db:5432/users-db';
@@ -35,4 +36,8 @@ app.get('/health', async (_req, res) => {
         timestamp: new Date().toISOString(),
         database: dbStats,
     });
+});
+
+app.listen(port, () => {
+    console.log(`Users service listening on: ${port}`);
 });

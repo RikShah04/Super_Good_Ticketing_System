@@ -310,6 +310,47 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  users:
+    build: ./users
+    container_name: users
+    restart: unless-stopped
+    ports:
+      - "3006:3006"
+    networks:
+      - team-net
+    environment:
+      - PORT=3006
+      - SERVICE_NAME=users
+      - DATABASE_URL=postgres://user:pass@users-db:5432/users-db
+    depends_on:
+      users-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  users-db:
+    image: postgres:16
+    container_name: users-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: users-db
+    volumes:
+      - ./users/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - users-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d users-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
       
   ticket-purchase:
     build: ./ticket-purchase
@@ -438,3 +479,4 @@ volumes:
   ticket-purchase-db-data:
   refund-db-data:
   events-db-data:
+  users-db-data:
