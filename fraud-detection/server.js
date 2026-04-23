@@ -108,6 +108,24 @@ function validateJob(job) {
   }
 }
 
+function isRetryableError(err) {
+  if (!err) return false
+
+  const msg = String(err.message || '').toLowerCase()
+
+  if (
+    msg.includes('missing') ||
+    msg.includes('invalid') ||
+    msg.includes('must be') ||
+    msg.includes('cannot be') ||
+    msg.includes('cc must')
+  ) {
+    return false
+  }
+
+  return true
+}
+
 async function determineFraud(job) {
   const price = Number(job.price)
   const seatCount = job.seats
