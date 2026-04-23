@@ -179,6 +179,39 @@ async function processJob(job){
   recordJobProcessed()
 }
 
+async function processJobWithRetry(job) {
+  let attempt = 0
+
+  while (attempt <= PROCESSING_MAX_RETRIES) {
+    try {
+      await processJob(job)
+      return
+    } catch (err) {
+      const retryable = isRetryableError(err)
+
+      if (!retryable || attempt === PROCESSING_MAX_RETRIES) {
+        throw err
+      }
+
+      const delay = PROCESSING_BACKOFF_MS * Math.pow(2, attempt)
+
+      console.warn('[fraud-worker] transient failure, retrying',
+        JSON.stringify({
+          paymentID: job?.paymentID,
+          orderID: job?.orderID,
+          attempt: attempt + 1,
+          maxRetries: PROCESSING_MAX_RETRIES,
+          delay_ms: delay,
+          error: err.message,
+        })
+      )
+
+      await sleep(delay)
+      attempt++
+    }
+  }
+}
+
 async function saveFraudResult(job, result) {
   const cardLast4 = getCardLast4(job.paymentInfo.cc)
 
