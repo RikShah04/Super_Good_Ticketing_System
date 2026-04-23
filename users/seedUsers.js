@@ -4,15 +4,12 @@ const { Pool } = pkg;
 
 const DATABASE_URL = process.env.DATABASE_URL || 'postgres://user:pass@users-db:5432/users:db';
 const pool = new Pool({ connectionString: DATABASE_URL });
-// Minimum 1 user, max 250 users
+// Minimum 1 user
 let input = parseInt(process.argv[2]);
 if (!Number.isInteger(input) || input < 0) {
     console.log('Invalid NUM_USERS input. Set to default = 50');
     input = 50;
-}// else if (input > 250) {
-   // console.log('Maximum 250 users permitted. Input adjusted');
-   // input = 250;
-//}
+}
 const NUM_USERS = input;
 
 faker.seed(42);
