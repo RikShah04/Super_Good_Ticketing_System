@@ -22,6 +22,8 @@ const RESULT_KEY_PREFIX = process.env.FRAUD_RESULT_KEY_PREFIX ?? 'fraud:result:'
 const HIGH_PRICE_THRESHOLD = Number(process.env.FRAUD_HIGH_PRICE_THRESHOLD ?? 500)
 const MAX_SEATS_THRESHOLD = Number(process.env.FRAUD_MAX_SEATS_THRESHOLD ?? 6)
 const CARD_ATTEMPT_LIMIT = Number(process.env.FRAUD_CARD_ATTEMPT_LIMIT ?? 4)
+const PROCESSING_MAX_RETRIES = Number(process.env.FRAUD_MAX_RETRIES ?? 3)
+const PROCESSING_BACKOFF_MS = Number(process.env.FRAUD_BACKOFF_MS ?? 500)
 
 const startTime = Date.now()
 let lastJobAt = null
@@ -30,6 +32,10 @@ let jobsProcessed = 0
 export function recordJobProcessed() {
   lastJobAt = new Date().toISOString()
   jobsProcessed++
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
 
 function getCardLast4(cc) {
