@@ -152,6 +152,33 @@ async function determineFraud(job) {
   return { flagged: false, reason: 'passed_basic_rules' }
 }
 
+async function processJob(job){
+  validateJob(job)
+
+  console.log(
+    '[fraud-worker] received fraud-check event',
+    JSON.stringify({
+      paymentID: job.paymentID,
+      orderID: job.orderID,
+      event_id: job.eventID,
+      seatCount: job.seats,
+      cardType: job.paymentInfo.cardType,
+      price: Number(job.price),
+      cardLast4: getCardLast4(job.paymentInfo.cc),
+    })
+  )
+  
+  const decision = await determineFraud(job)
+  await saveFraudResult(job, decision)
+  const published = await publishFraudResult(job, decision)
+  console.log(
+    '[fraud-worker] completed fraud-check',
+    JSON.stringify(published)
+  )
+
+  recordJobProcessed()
+}
+
 async function saveFraudResult(job, result) {
   const cardLast4 = getCardLast4(job.paymentInfo.cc)
 
