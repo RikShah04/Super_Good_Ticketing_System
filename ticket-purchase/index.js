@@ -318,7 +318,28 @@ app.post('/verify', async (req, res) => {
   if (purchase.refundable_seats < seats)
     return res.status(400).json({ message: 'Not enough refundable seats available' });
 
+  // cache refund in Redis for /refund to confirm
+  // if too much time has passed, the refund will cancel
+  await client.set(`ticket-purchase-refund:${purchaseId}`, seats, { EX: TTL_MIN * 60 });
+
   res.status(200).json({ ...purchase });
+});
+
+app.post('/refund', async (req, res) => {
+  const { purchaseId } = req.body;
+
+  const refundableSeats = await client.get(`ticket-purchase-refund:${purchaseId}`);
+  if (!refundableSeats)
+    return res.status(400).json({ message: 'Refund request expired or invalid' });
+
+  // perform refund
+  await db.query(
+    'UPDATE ticket_purchases SET refundable_seats = refundable_seats - $2 WHERE id = $1',
+    [purchaseId, refundableSeats]
+  );
+  await client.del(`ticket-purchase-refund:${purchaseId}`);
+
+  res.status(200).json({ message: 'Refund successful', refundedSeats: refundableSeats });
 });
 
 
