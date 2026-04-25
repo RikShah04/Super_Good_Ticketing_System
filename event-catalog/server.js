@@ -63,7 +63,7 @@ function publishEvent({
         payload: extra
     };
 
-    client.rPush("analytics:queue", JSON.stringify(eventPayload))
+    client.lPush("analytics:queue", JSON.stringify(eventPayload))
         .catch(err => {
             console.error("Failed to enqueue analytics event: ", err.message);
         });
