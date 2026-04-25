@@ -2,6 +2,7 @@ import express from 'express';
 import redis from 'redis';
 import pg from 'pg';
 import validator from 'validator';
+import { randomUUID } from 'crypto';
 
 const app = express();
 const port = Number(process.env.PORT || '3005');
@@ -26,7 +27,7 @@ await client.connect();
 
 app.use(express.json());
 
-// Middleware to retrieve userId
+// Middleware to retrieve userId (to be modified for better simulation later)
 app.use((req, _res, next) => {
     const userId = req.header("x-user-id");
 
@@ -37,7 +38,33 @@ app.use((req, _res, next) => {
     }
 
     next();
-})
+});
+
+function publishEvent({
+    eventType,
+    eventId,
+    userId,
+    seats = null,
+    priceUsd = null,
+    extra = {}
+}) {
+    const eventPayload = {
+        idem_key: randomUUID(),
+        event_type: eventType,
+        source_service: SERVICE_NAME,
+        event_id: eventId,
+        user_id: userId || null,
+        seats,
+        price_usd: priceUsd,
+        emitted_at: new Date().toISOString(),
+        payload: extra
+    };
+
+    client.rPush("analytics:queue", JSON.stringify(eventPayload))
+        .catch(err => {
+            console.error("Failed to enqueue analytics event: ", err.message);
+        });
+}
 
 app.get('/events', async (req, res) => {
     // Default page is 1
@@ -125,7 +152,20 @@ app.get('/events/:id', async (req, res) => {
         // Try Redis cache first
         const cached = await client.get(cacheKey);
         if (cached) {
-            return res.json(JSON.parse(cached));
+            const event = JSON.parse(cached);
+
+            res.json(event);
+            
+            publishEvent({
+                eventType: "event.viewed",
+                eventId: id,
+                userId: req.user?.id,
+                extra: {
+                    source: "cache"
+                }
+            });
+
+            return;
         }
 
         // Not in the cache, to the DB it is!
@@ -140,7 +180,16 @@ app.get('/events/:id', async (req, res) => {
         // Now we cache it
         await client.setEx(cacheKey, 60, JSON.stringify(event));
 
-        res.json(event);
+        res.json(event)
+        
+        publishEvent({
+            eventType: "event.viewed",
+            eventId: id,
+            userId: req.user?.id,
+            extra: {
+                source: "events-db"
+            }
+        });
         
     } catch (err) {
         console.error("GET /events/:id failed: ", err);
