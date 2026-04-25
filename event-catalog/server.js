@@ -57,7 +57,7 @@ function publishEvent({
         source_service: SERVICE_NAME,
         event_id: eventId,
         user_id: userId || null,
-        seats,
+        seats: seats,
         price_usd: priceUsd,
         emitted_at: new Date().toISOString(),
         payload: extra
@@ -163,6 +163,8 @@ app.get('/events/:id', async (req, res) => {
                 eventType: "event.viewed",
                 eventId: id,
                 userId: req.user?.id,
+                seats: event.availableseats,
+                priceUsd: event.priceusd,
                 extra: {
                     source: "cache"
                 }
@@ -189,6 +191,8 @@ app.get('/events/:id', async (req, res) => {
             eventType: "event.viewed",
             eventId: id,
             userId: req.user?.id,
+            seats: event.availableseats,
+            priceUsd: event.priceusd,
             extra: {
                 source: "events-db"
             }
