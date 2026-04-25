@@ -1,6 +1,7 @@
 import express from 'express';
 import redis from 'redis';
 import pg from 'pg';
+import validator from 'validator';
 
 const app = express();
 const port = Number(process.env.PORT || '3006');
@@ -64,6 +65,47 @@ app.get('/users', async (req, res) => {
 
         res.status(503).json({
             error: "Database or Redis unavailable",
+            details: err.message,
+        });
+    }
+});
+
+app.get('/users/:id', async (req, res) => {
+    const id = req.params.id;
+
+    // Validate id format
+    if (!validator.isUUID(id)) {
+        return res.status(400).json({ error: "Invalid user ID format." });
+    }
+
+    const cacheKey = `user:${id}`;
+
+    try {
+        // Check cache
+        const cached = await client.get(cacheKey);
+        if (cached) {
+            const user = JSON.parse(cached);
+            return res.json(user);
+        }
+
+        // User not cached
+        const result = await pool.query(`SELECT * FROM users where userid = $1`, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Event not found."});
+        }
+
+        const user = result.rows[0];
+
+        // Cache located user
+        await client.setEx(cacheKey, 60, JSON.stringify(user));
+
+        res.json(user);
+    } catch (err) {
+        console.error("GET /users/:id failed: ", err);
+
+        res.status(503).json({
+            error: "Database or redis unavailable",
             details: err.message,
         });
     }
