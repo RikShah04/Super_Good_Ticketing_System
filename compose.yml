@@ -443,7 +443,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -458,6 +458,7 @@ services:
       POSTGRES_DB: refund_db
     volumes:
       - refund-db-data:/var/lib/postgresql/data
+      - ./refund/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
       - team-net
     healthcheck:
