@@ -27,7 +27,10 @@ await client.connect();
 
 app.use(express.json());
 
-// Middleware to retrieve userId (to be modified for better simulation later)
+// Middleware to retrieve simulated userId
+// Usage Idea: In load tests, we can use userIds from users-db to simulate repeated requests.
+// in load test, when fetching from events/:id, we include a header with the user id.
+// ex: await fetch(`http://localhost:3005/events/${event.id}`, {headers: { "x-user-id: user.id "}});
 app.use((req, _res, next) => {
     const userId = req.header("x-user-id");
 
