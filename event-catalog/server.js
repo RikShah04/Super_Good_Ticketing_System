@@ -26,6 +26,19 @@ await client.connect();
 
 app.use(express.json());
 
+// Middleware to retrieve userId
+app.use((req, _res, next) => {
+    const userId = req.header("x-user-id");
+
+    if (userId && validator.isUUID(userId)) {
+        req.user = { id: userId };
+    } else {
+        req.user = null;
+    }
+
+    next();
+})
+
 app.get('/events', async (req, res) => {
     // Default page is 1
     const page = Math.max(parseInt(req.query.page || "1", 10), 1);
