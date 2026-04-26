@@ -16,7 +16,7 @@
 
 | Team Member | What They Delivered | Key Commits |
 | ----------- | ------------------- | ----------- |
-| Henry Branham      | added payment refund endpoint, takes in paymentID and sets status to refunded in db | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/48, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/61 |
+| Henry Branham      | added payment refund endpoint, takes in paymentID and amount setting status to refunded or partial_refund in db | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/48, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/61 |
 | [Name]      | | |
 | [Name]      | | |
 
