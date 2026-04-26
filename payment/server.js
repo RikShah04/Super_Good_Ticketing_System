@@ -93,7 +93,7 @@ app.post('/process', async (req, res) => {
       [paymentID, paymentToken, price, 0, 'success']
     );
 
-    console.log(`Payment ${paymentID} Processed!`);
+    console.log(`Payment ${paymentID} processed!`);
 
     return res.status(200).json({
       status: 'success',
@@ -152,6 +152,8 @@ app.post('/refund', async (req, res) => {
       [amountNum, paymentID]
     );
 
+
+    console.log(`Payment ${paymentID} refunded with amount ${amountNum} and type ${isPartialRefund ? 'partial_refund' : 'refunded'}!`);
 
     return res.status(200).json({
       status: isPartialRefund ? 'partial_refund' : 'refunded',
