@@ -82,15 +82,26 @@ app.get('/health', async (req, res) => {
   });
 });
 
+
+function processedKey(order) {
+  return `processed:${order}`;
+}
+
 async function processJob(event_id){
   let event_queue = QUEUE_NAME + "-" + event_id
   let waitlist_item = await client.LPOP(event_queue)
-  
+  const { eventId, seats, paymentInfo, idemKey } = JSON.stringify(waitlist_item);
+  const key = processedKey(idemKey)
+  const claimed = await client.set(key, '1', { NX: true})
+
+  if (!claimed){
+    return
+  }
 
   const response = await fetch(TICKET_PURCHASE_URL + '/purchase', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(waitlist_item),
+    body: { eventId, seats, paymentInfo, idemKey },
   })
   
   let data = await response.json();
