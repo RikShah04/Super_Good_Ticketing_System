@@ -136,7 +136,7 @@ app.post('/purchase', async (req, res) => {
     
     // push to event-specific waitlist queue
     for (let i = 0; i < seats; i++)
-      await client.lpush(`${WAITLIST_QUEUE_NAME}-${eventId}`, JSON.stringify({ eventId, paymentInfo, idemKey }));
+      await client.lPush(`${WAITLIST_QUEUE_NAME}-${eventId}`, JSON.stringify({ eventId, paymentInfo, idemKey }));
 
     return res.status(409).json({ message: 'Not enough seats available' });
   }
