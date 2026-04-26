@@ -354,6 +354,8 @@ services:
       - SERVICE_NAME=waitlist-worker
       - QUEUE_NAME=waitlist:queue
       - DLQ_NAME=waitlist:dlq
+      - PAYMENT_URL=http://payment:3001
+      - TICKET_PURCHASE_URL=http://ticket-purchase:3000
     depends_on:
       redis:
         condition: service_healthy

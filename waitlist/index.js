@@ -6,7 +6,8 @@ const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 const SERVICE_NAME = process.env.SERVICE_NAME || 'waitlist-worker';
 const QUEUE_NAME = process.env.QUEUE_NAME || 'waitlist-jobs';
 const DLQ_NAME = process.env.DLQ_NAME || `${QUEUE_NAME}:dlq`;
-
+const PAYMENT_URL = process.env.PAYMENT_URL || "http://payment:3001"
+const TICKET_PURCHASE_URL = process.env.TICKET_PURCHASE_URL || "http://ticket-purchase:3000"
 
 const app = express();
 
@@ -81,6 +82,40 @@ app.get('/health', async (req, res) => {
   });
 });
 
+async function processJob(event_id){
+  let event_queue = QUEUE_NAME + "-" + event_id
+  let waitlist_item = await client.LPOP(event_queue)
+  
+
+  const response = await fetch(TICKET_PURCHASE_URL + '/purchase', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(waitlist_item),
+  })
+  
+  let data = await response.json();
+  console.log(`Event ${event_id}: status=${response.status}`, data);
+  return data;
+}
+
+async function loop(){
+  while(true){
+    const result = await client.brPop(QUEUE_NAME, 0)
+    const raw = result?.element
+    if (!raw) continue
+
+    try{
+      await processJob(JSON.parse(raw))
+    } catch (err) {
+      console.error('Invalid job payload:', err.message)
+    }
+
+  }
+}
+
+
 app.listen(3000, () => {
   console.log('Worker is running on port 3000');
 });
+
+await loop();
