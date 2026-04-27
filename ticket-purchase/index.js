@@ -98,7 +98,7 @@ app.post('/purchase', async (req, res) => {
       const statusCode = await client.hGet(`purchase-data:${idemKey}`, 'status');
       const status = statusCode ? parseInt(statusCode) : (jobState === 'success' ? 200 : 500);
 
-      return res.status(status).json({ message: `Duplicate detected; previous request completed with status ${jobState}`, ...response });
+      return res.status(status).json({ message: `Duplicate detected; previous request completed with status ${jobState}`, response });
     }
   }
 
