@@ -328,7 +328,7 @@ app.post('/verify', async (req, res) => {
 app.post('/refund', async (req, res) => {
   const { purchaseId } = req.body;
 
-  const refundableSeats = await client.get(`ticket-purchase-refund:${purchaseId}`);
+  const refundableSeats = parseInt(await client.get(`ticket-purchase-refund:${purchaseId}`));
   if (!refundableSeats)
     return res.status(400).json({ message: 'Refund request expired or invalid' });
 
