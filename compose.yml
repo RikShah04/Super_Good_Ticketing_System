@@ -356,8 +356,8 @@ services:
     build: ./ticket-purchase
     container_name: ticket-purchase
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     networks:
       - team-net
     environment:
@@ -467,6 +467,20 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+  
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - team-net
+    depends_on:
+      ticket-purchase:
+        condition: service_healthy
 
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
