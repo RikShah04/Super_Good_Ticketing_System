@@ -25,6 +25,8 @@ client.on('error', err => {
 
 await client.connect();
 
+await pool.connect();
+
 app.use(express.json());
 
 // Middleware to retrieve simulated userId
@@ -185,7 +187,7 @@ app.get('/events/:id', async (req, res) => {
         // Now we cache it
         await client.setEx(cacheKey, 60, JSON.stringify(event));
 
-        res.json(event)
+        res.json(event);
         
         publishEvent({
             eventType: "event.viewed",
