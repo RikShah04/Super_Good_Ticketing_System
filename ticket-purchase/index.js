@@ -141,24 +141,17 @@ app.post('/purchase', async (req, res) => {
     console.error('Not enough seats available, pushing job to waitlist queue');
 
     await markFailed(id, 'Not enough seats available');
-<<<<<<< task/ticket-purchase-refundable-seats
     await client.hSet(`purchase-data:${idemKey}`, {
       'state': 'failed',
       'status': '409',
       'response': JSON.stringify({ message: 'Not enough seats available, pushed to waitlist' }),
     });
-=======
->>>>>>> dev
     
     // push to event-specific waitlist queue
     for (let i = 0; i < seats; i++)
       await client.lPush(`${WAITLIST_QUEUE_NAME}-${eventId}`, JSON.stringify({ eventId, paymentInfo, idemKey }));
 
-<<<<<<< task/ticket-purchase-refundable-seats
     return res.status(409).json({ message: 'Not enough seats available, pushed to waitlist' });
-=======
-    return res.status(409).json({ message: 'Not enough seats available' });
->>>>>>> dev
   }
   else if (seatRes.status >= 500) {
     console.error('event-catalog error');
