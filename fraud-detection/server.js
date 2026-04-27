@@ -353,46 +353,35 @@ async function workerLoop() {
   while (true) {
     try {
       const result = await workerRedis.brPop(QUEUE_NAME, 0)
-      if (!result?.element) continue
+
+      if (!result?.element) {
+        continue
+      }
 
       let job
+
       try {
         job = JSON.parse(result.element)
       } catch (err) {
         console.error('[fraud-worker] invalid JSON, moving to DLQ')
-        await redis.rPush(DLQ_NAME, result.element)
+
+        await redis.rPush(
+          DLQ_NAME,
+          JSON.stringify({
+            originalPayload: result.element,
+            error: 'invalid JSON',
+            failedAt: new Date().toISOString(),
+          })
+        )
+
         continue
       }
 
       try {
-        validateJob(job)
-
-        console.log(
-          '[fraud-worker] received fraud-check event',
-          JSON.stringify({
-            paymentID: job.paymentID,
-            orderID: job.orderID,
-            event_id: job.eventID,
-            seatCount: job.seats,
-            cardType: job.paymentInfo.cardType,
-            price: Number(job.price),
-            cardLast4: getCardLast4(job.paymentInfo.cc),
-          })
-        )
-
-        const decision = await determineFraud(job)
-        await saveFraudResult(job, decision)
-        const published = await publishFraudResult(job, decision)
-
-        console.log(
-          '[fraud-worker] completed fraud-check',
-          JSON.stringify(published)
-        )
-
-        recordJobProcessed()
+        await processJobWithRetry(job)
       } catch (err) {
         console.error(
-          '[fraud-worker] failed processing job, moving to DLQ:',
+          '[fraud-worker] failed processing job after retries, moving to DLQ:',
           err.message
         )
 
@@ -406,11 +395,14 @@ async function workerLoop() {
             },
             error: err.message,
             failedAt: new Date().toISOString(),
+            retriesAttempted: PROCESSING_MAX_RETRIES,
           })
         )
       }
     } catch (err) {
       console.error('[fraud-worker] loop error', err.message)
+
+      await sleep(1000)
     }
   }
 }
