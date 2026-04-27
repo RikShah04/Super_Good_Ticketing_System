@@ -88,12 +88,12 @@ app.post('/process', async (req, res) => {
   try{
 
     pool.query(
-      `INSERT INTO payments (payment_id, token, price, status)
-       VALUES ($1, $2, $3, $4)`,
-      [paymentID, paymentToken, price, 'success']
+      `INSERT INTO payments (payment_id, token, price, amount_refunded, status)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [paymentID, paymentToken, price, 0, 'success']
     );
 
-    console.log(`Payment ${paymentID} Processed!`);
+    console.log(`Payment ${paymentID} processed!`);
 
     return res.status(200).json({
       status: 'success',
@@ -114,28 +114,55 @@ app.post('/process', async (req, res) => {
     }
 */
 app.post('/refund', async (req, res) => {
-  const { paymentID} = req.body;
+  const { paymentID, amount } = req.body;
+  const amountNum = Number(amount);
+
+  let isPartialRefund = true;
 
   try{
     const result = await pool.query(
-      `UPDATE payments
-      SET status = $1, updated_at = CURRENT_TIMESTAMP
-      WHERE payment_id = $2
-      RETURNING *`,
-      ['refunded', paymentID]
+      `SELECT price, amount_refunded
+      FROM payments
+      WHERE payment_id = $1`,
+      [paymentID]
     );
 
     if (result.rowCount === 0) {
       return returnError(res, 400, 'Payment ID Not Found');
-    } else {
-      return res.status(200).json({
-        status: 'refunded',
-        paymentID: paymentID,
-        timestamp: new Date().toISOString(),
-      });
     }
+
+    const { price, amount_refunded } = result.rows[0];
+    const priceNum = Number(price), amount_refundedNum = Number(amount_refunded);
+
+    if (amountNum + amount_refundedNum > priceNum) {
+      return returnError(res, 400, 'Refund exceeds original payment amount');
+    }
+
+    if (amountNum + amount_refundedNum >= priceNum) isPartialRefund = false;
+
+    await pool.query(
+      `UPDATE payments
+      SET amount_refunded = amount_refunded + $1,
+          status = CASE 
+            WHEN amount_refunded + $1 >= price THEN 'refunded'
+            ELSE 'partial_refund'
+          END,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE payment_id = $2`,
+      [amountNum, paymentID]
+    );
+
+
+    console.log(`Payment ${paymentID} refunded with amount ${amountNum} and type ${isPartialRefund ? 'partial_refund' : 'refunded'}!`);
+
+    return res.status(200).json({
+      status: isPartialRefund ? 'partial_refund' : 'refunded',
+      paymentID: paymentID,
+      timestamp: new Date().toISOString(),
+    });
+
   }catch(err){
-    return returnError(res, 500, 'A server error occured when attempting to process payment');
+    return returnError(res, 500, 'A server error occured when attempting to process refund');
   }
 
 })
