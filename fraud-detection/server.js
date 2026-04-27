@@ -11,7 +11,12 @@ await redis.connect()
 const workerRedis = createClient({ url: process.env.REDIS_URL })
 await workerRedis.connect()
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS ?? 1000),
+  query_timeout: Number(process.env.DB_QUERY_TIMEOUT_MS ?? 1000),
+  statement_timeout: Number(process.env.DB_STATEMENT_TIMEOUT_MS ?? 1000),
+})
 
 const QUEUE_NAME = process.env.FRAUD_QUEUE_KEY ?? 'fraud:queue'
 const DLQ_NAME = process.env.FRAUD_DLQ_KEY ?? `${QUEUE_NAME}:dlq`
