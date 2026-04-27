@@ -472,7 +472,7 @@ services:
     container_name: caddy
     restart: unless-stopped
     ports:
-      - "3000:3000"
+     - "3000:3000"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     networks:
