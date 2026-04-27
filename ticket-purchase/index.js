@@ -111,9 +111,9 @@ app.post('/purchase', async (req, res) => {
 
   // start db log
   const dbRow = await db.query(
-    `INSERT INTO ticket_purchases (event_id, payment_id, seats, charge, status) 
-    VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [eventId, null, seats, null, 'pending']
+    `INSERT INTO ticket_purchases (event_id, payment_id, purchased_seats, refundable_seats, charge, status) 
+    VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [eventId, null, seats, seats, null, 'pending']
   );
   const id = dbRow.rows[0].id;
 
@@ -127,18 +127,38 @@ app.post('/purchase', async (req, res) => {
   // check seatRes status for errors
   if (seatRes.status == 404) {
     console.error('Event not found');
+
     await markFailed(id, 'Event not found');
+    await client.hSet(`purchase-data:${idemKey}`, {
+      'state': 'failed',
+      'status': '404',
+      'response': JSON.stringify({ message: 'Event not found' }),
+    });
+
     return res.status(404).json({ message: 'Event not found' });
   }
   else if (seatRes.status == 409) {
     console.error('Not enough seats available, pushing job to waitlist queue');
+
     await markFailed(id, 'Not enough seats available');
+<<<<<<< task/ticket-purchase-refundable-seats
+    await client.hSet(`purchase-data:${idemKey}`, {
+      'state': 'failed',
+      'status': '409',
+      'response': JSON.stringify({ message: 'Not enough seats available, pushed to waitlist' }),
+    });
+=======
+>>>>>>> dev
     
     // push to event-specific waitlist queue
     for (let i = 0; i < seats; i++)
       await client.lPush(`${WAITLIST_QUEUE_NAME}-${eventId}`, JSON.stringify({ eventId, paymentInfo, idemKey }));
 
+<<<<<<< task/ticket-purchase-refundable-seats
+    return res.status(409).json({ message: 'Not enough seats available, pushed to waitlist' });
+=======
     return res.status(409).json({ message: 'Not enough seats available' });
+>>>>>>> dev
   }
   else if (seatRes.status >= 500) {
     console.error('event-catalog error');
@@ -194,6 +214,7 @@ app.post('/purchase', async (req, res) => {
           orderID: id,
           paymentInfo: { cc, cardType },
           seats,
+          refundableSeats: seats,
           price
         })
       );
@@ -210,6 +231,7 @@ app.post('/purchase', async (req, res) => {
           orderId: id,
           paymentId: paymentData.paymentID,
           seats,
+          refundableSeats: seats,
           priceUsd: price,
         })
       );
@@ -222,6 +244,7 @@ app.post('/purchase', async (req, res) => {
           orderId: id,
           type: 'purchase',
           seats,
+          refundableSeats: seats,
           cc,
           cardType,
           price,
@@ -236,7 +259,7 @@ app.post('/purchase', async (req, res) => {
       });
 
       console.log('Payment successful');
-      return res.status(200).json({ message: 'Purchase successful' });
+      return res.status(200).json({ message: 'Purchase successful', purchaseId: id });
     }
 
     // on failures...
@@ -299,10 +322,31 @@ app.post('/verify', async (req, res) => {
     return res.status(404).json({ message: 'Purchase not found' });
   const purchase = dbRes.rows[0];
 
-  if (purchase.seats < seats)
-    return res.status(400).json({ message: 'Not enough seats available' });
+  if (purchase.refundable_seats < seats)
+    return res.status(400).json({ message: 'Not enough refundable seats available' });
 
-  res.status(200).json({ purchase });
+  // cache refund in Redis for /refund to confirm
+  // if too much time has passed, the refund will cancel
+  await client.set(`ticket-purchase-refund:${purchaseId}`, seats, { EX: TTL_MIN * 60 });
+
+  res.status(200).json({ ...purchase });
+});
+
+app.post('/refund', async (req, res) => {
+  const { purchaseId } = req.body;
+
+  const refundableSeats = parseInt(await client.get(`ticket-purchase-refund:${purchaseId}`));
+  if (!refundableSeats)
+    return res.status(400).json({ message: 'Refund request expired or invalid' });
+
+  // perform refund
+  await db.query(
+    'UPDATE ticket_purchases SET refundable_seats = refundable_seats - $2 WHERE id = $1',
+    [purchaseId, refundableSeats]
+  );
+  await client.del(`ticket-purchase-refund:${purchaseId}`);
+
+  res.status(200).json({ message: 'Refund successful', refundedSeats: refundableSeats });
 });
 
 
