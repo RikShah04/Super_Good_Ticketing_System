@@ -3,10 +3,21 @@ import redis from "redis";
 import pg from "pg";
 
 const app = express();
+app.use(express.json());
+
 const port = process.env.PORT || 3000;
 const redisUrl = process.env.REDIS_URL || "redis://redis:6379";
 const SERVICE_NAME = process.env.SERVICE_NAME || 'refund';
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://user:pass@refund-db:5432/refund_db";
+
+const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog:3005';
+const PAYMENT_URL = process.env.PAYMENT_URL || 'http://payment:3001';
+const TICKET_PURCHASE_URL = process.env.TICKET_PURCHASE_URL || "http://ticket-purchase:3000";
+
+const ANALYTICS_QUEUE_NAME = process.env.ANALYTICS_QUEUE_NAME || 'analytics:queue';
+const SEAT_RELEASED_PUBSUB_NAME = process.env.SEAT_RELEASED_PUBSUB_NAME || "seat-released";
+const NOTIFICATION_PUBSUB_NAME = process.env.NOTIFICATION_PUBSUB_NAME || 'notification:pubsub';
+
 
 const client = redis.createClient({ url: redisUrl });
 client.on("error", (err) => console.error("Refund Redis error:", err.message));
@@ -17,6 +28,14 @@ db.on('error', (err) => {
 });
 
 const startTime = Date.now();
+
+function refundIdemKey(idemKey){
+  return `refund-idem:${idemKey}`;
+}
+
+function refundDataKey(idemKey){
+  return `refund-data:${idemKey}`;
+}
 
 app.get("/health", async (_req, res) =>{
   const checks = {};
@@ -55,12 +74,226 @@ app.get("/health", async (_req, res) =>{
 });
 
 app.get("/seat-released", (_req, res) => {
-    res.status(200).json({
-        event: "seat-released",
-        message: "placeholder response",
-        published: false
-    });
+  res.status(200).json({
+      event: "seat-released",
+      message: "placeholder response",
+      published: false
+  });
 });
+
+app.post("/refund", async (req, res) => {
+  const { purchaseId, seats, idemKey } = req.body;
+
+  //verify input
+  if (!purchaseId || !Number.isInteger(seats) || seats <= 0){
+    return res.status(400).json({
+      message: "Proper purchaseID and seats are required"
+    })
+  }
+
+  let refundId;
+
+  try{
+    //Ticket-purchase verifies that this purchase exists
+    //and that the requested number of seats can be refunded
+    const verifyRes = await fetch(`${TICKET_PURCHASE_URL}/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({purchaseId, seats})
+    });
+
+    if(!verifyRes.ok){
+      const verifyBody = await verifyRes.json().catch(() => ({}));
+      return res.status(verifyRes.status).json({
+        message: verifyBody.message || "Purchase verification failed"
+      })
+    }
+
+    const verifyData = await verifyRes.json();
+    const purchase = verifyData.purchase;
+
+    //Get data from the verified purchase.
+    // ticket_purchases.charge is the total original purchase cost
+    const eventId = purchase.event_id;
+    const paymentId = purchase.payment_id;
+    const originalSeats = purchase.seats;
+    const originalCharge = purchase.charge;
+
+    if (!eventId || !paymentId || !originalSeats || !originalCharge) {
+      return res.status(500).json({
+        message: "Verified purchase missing event_id, payment_id, original seats, or original charge",
+      });
+    }
+
+    const refundAmount = (originalCharge / originalSeats) * seats;
+
+    //Store pending refund
+    const insertRefundRes = await db.query(
+      `INSERT INTO refunds (
+        purchase_id,
+        event_id,
+        payment_id,
+        seats,
+        amount,
+        status
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id`,
+      [purchaseId, eventId, paymentId, seats, refundAmount, "pending"]
+    );
+
+    refundId = insertRefundRes.rows[0].id;
+
+    //Call payment service to actually give refund
+    const paymentRefundRes = await fetch(`${PAYMENT_URL}/refund`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        paymentID: paymentId,
+        purchaseId,
+        amount: refundAmount,
+      }),
+    });
+
+    if (!paymentRefundRes.ok) {
+      const paymentBody = await paymentRefundRes.json().catch(() => ({}));
+      const message = paymentBody.message || "Payment refund failed";
+
+      await db.query(
+        `UPDATE refunds
+        SET status = $2, reason = $3
+        WHERE id = $1`,
+        [refundId, "failed", message]
+      );
+
+      return res.status(paymentRefundRes.status).json({ message });
+    }
+
+    await paymentRefundRes.json().catch(() => ({}));
+
+    //once payment is successful, unreserve seats in evnet-catalog
+    const unreserveRes = await fetch(`${EVENT_CATALOG_URL}/unreserve-seats`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        event_id: eventId,
+        seats,
+      }),
+    });
+
+    if (!unreserveRes.ok) {
+      const unreserveBody = await unreserveRes.json().catch(() => ({}));
+      const message = unreserveBody.message || "Failed to unreserve seats";
+
+      await db.query(
+        `UPDATE refunds
+         SET status = $2, reason = $3
+         WHERE id = $1`,
+        [refundId, "failed", message]
+      );
+
+      return res.status(unreserveRes.status).json({ message });
+    }
+
+    // 8. TODO later:
+    // Tell ticket-purchase how many seats were successfully refunded.
+    // This is where the future ticket-purchase endpoint would be called.
+    //
+    // await fetch(`${TICKET_PURCHASE_URL}/refund-completed`, {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json" },
+    //   body: JSON.stringify({
+    //     purchaseId,
+    //     refundId,
+    //     seats,
+    //   }),
+    // });
+
+    //Push refund event to analytics queue.
+    await client.lPush(
+      ANALYTICS_QUEUE_NAME,
+      JSON.stringify({
+        type: "refund",
+        refundId,
+        purchaseId,
+        eventId,
+        paymentId,
+        seats,
+        amount: refundAmount,
+      })
+    );
+
+    //publish seat-released event if seat opens up 
+    await client.publish(
+      SEAT_RELEASED_PUBSUB_NAME,
+      JSON.stringify({
+        type: "seat-released",
+        source: "refund",
+        refundId,
+        purchaseId,
+        eventId,
+        seats,
+        releasedAt: new Date().toISOString(),
+      })
+    );
+
+    //Publish notification event
+    await client.publish(
+      NOTIFICATION_PUBSUB_NAME,
+      JSON.stringify({
+        type: "refund",
+        refundId,
+        purchaseId,
+        eventId,
+        paymentId,
+        seats,
+        amount: refundAmount,
+      })
+    );
+
+    //Mark refund completed in refund db
+    await db.query(
+      `UPDATE refunds
+       SET status = $2
+       WHERE id = $1`,
+      [refundId, "completed"]
+    );
+
+    return res.status(200).json({
+      message: "Refund successful",
+      refundId,
+      purchaseId,
+      eventId,
+      paymentId,
+      seats,
+      amount: refundAmount,
+    });
+  } catch (err) {
+    console.error("Refund endpoint error:", err.message);
+
+     if (refundId) {
+      await db.query(
+        `UPDATE refunds
+         SET status = $2, reason = $3
+         WHERE id = $1`,
+        [refundId, "failed", err.message]
+      );
+    }
+
+    return res.status(500).json({
+      message: "Internal refund service error",
+      error: err.message,
+    });
+  }
+
+
+});
+
 
 await client.connect();
 

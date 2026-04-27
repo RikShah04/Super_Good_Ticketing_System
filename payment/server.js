@@ -36,7 +36,7 @@ app.get('/health', async (req, res) => {
   res.status(healthy ? 200 : 503).json(body)
 })
 
-async function returnProcessError(res, statusCode, errorMessage){
+async function returnError(res, statusCode, errorMessage){
   res.status(statusCode).json({
       status: 'failure',
       error: errorMessage,
@@ -61,19 +61,19 @@ app.post('/process', async (req, res) => {
 
   // Data validation
   if(cc && (cc.length < 15)){
-    return returnProcessError(res, 400, 'Invalid CC');
+    return returnError(res, 400, 'Invalid CC');
   }
   if (cvv && (cvv.length !== 3 && cvv.length !== 4)){
-    return returnProcessError(res, 400, 'Invalid CVV');
+    return returnError(res, 400, 'Invalid CVV');
   }
   if(expiry && (expiry.length != 5)){
-    return returnProcessError(res, 400, 'Invalid Expiry');
+    return returnError(res, 400, 'Invalid Expiry');
   }
   if (cardType && !['Amex', 'Visa', 'Master'].includes(cardType)){
-    return returnProcessError(res, 400, 'Invalid Card Type');
+    return returnError(res, 400, 'Invalid Card Type');
   }
   if(price && (price < 0)){
-    return returnProcessError(res, 400, 'Invalid Payment Amount');
+    return returnError(res, 400, 'Invalid Payment Amount');
   }
 
   console.log(`Processing Payment ${paymentID}...`);
@@ -88,12 +88,12 @@ app.post('/process', async (req, res) => {
   try{
 
     pool.query(
-      `INSERT INTO payments (payment_id, token, price, status)
-       VALUES ($1, $2, $3, $4)`,
-      [paymentID, paymentToken, price, 'success']
+      `INSERT INTO payments (payment_id, token, price, amount_refunded, status)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [paymentID, paymentToken, price, 0, 'success']
     );
 
-    console.log(`Payment ${paymentID} Processed!`);
+    console.log(`Payment ${paymentID} processed!`);
 
     return res.status(200).json({
       status: 'success',
@@ -103,7 +103,66 @@ app.post('/process', async (req, res) => {
     });
 
   }catch(err){
-    return returnProcessError(res, 500, 'A server error occured when attempting to process payment');
+    return returnError(res, 500, 'A server error occured when attempting to process payment');
+  }
+
+})
+
+/* Example JSON payload:
+    {
+      paymentID: "3f8a7c2e-91d4-4b6f-a9c1-5e2d7f8a1b3c"
+    }
+*/
+app.post('/refund', async (req, res) => {
+  const { paymentID, amount } = req.body;
+  const amountNum = Number(amount);
+
+  let isPartialRefund = true;
+
+  try{
+    const result = await pool.query(
+      `SELECT price, amount_refunded
+      FROM payments
+      WHERE payment_id = $1`,
+      [paymentID]
+    );
+
+    if (result.rowCount === 0) {
+      return returnError(res, 400, 'Payment ID Not Found');
+    }
+
+    const { price, amount_refunded } = result.rows[0];
+    const priceNum = Number(price), amount_refundedNum = Number(amount_refunded);
+
+    if (amountNum + amount_refundedNum > priceNum) {
+      return returnError(res, 400, 'Refund exceeds original payment amount');
+    }
+
+    if (amountNum + amount_refundedNum >= priceNum) isPartialRefund = false;
+
+    await pool.query(
+      `UPDATE payments
+      SET amount_refunded = amount_refunded + $1,
+          status = CASE 
+            WHEN amount_refunded + $1 >= price THEN 'refunded'
+            ELSE 'partial_refund'
+          END,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE payment_id = $2`,
+      [amountNum, paymentID]
+    );
+
+
+    console.log(`Payment ${paymentID} refunded with amount ${amountNum} and type ${isPartialRefund ? 'partial_refund' : 'refunded'}!`);
+
+    return res.status(200).json({
+      status: isPartialRefund ? 'partial_refund' : 'refunded',
+      paymentID: paymentID,
+      timestamp: new Date().toISOString(),
+    });
+
+  }catch(err){
+    return returnError(res, 500, 'A server error occured when attempting to process refund');
   }
 
 })
