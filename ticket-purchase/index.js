@@ -8,7 +8,7 @@ const DATABASE_URL = process.env.DATABASE_URL || 'postgres://user:pass@ticket-pu
 const SERVICE_NAME = process.env.SERVICE_NAME || 'ticket-purchase';
 const FRAUD_QUEUE_NAME = process.env.FRAUD_QUEUE_NAME || 'fraud:queue';
 const ANALYTICS_QUEUE_NAME = process.env.ANALYTICS_QUEUE_NAME || 'analytics:queue';
-const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist:queue';
+const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist-jobs';
 const NOTIFICATION_PUBSUB_NAME = process.env.NOTIFICATION_PUBSUB_NAME || 'notification:pubsub';
 const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog:3005';
 const PAYMENT_URL = process.env.PAYMENT_URL || 'http://payment:3001';
@@ -133,7 +133,11 @@ app.post('/purchase', async (req, res) => {
   else if (seatRes.status == 409) {
     console.error('Not enough seats available, pushing job to waitlist queue');
     await markFailed(id, 'Not enough seats available');
-    // client.lpush(WAITLIST_QUEUE_NAME, JSON.stringify({ eventId, seats, paymentInfo }));
+    
+    // push to event-specific waitlist queue
+    for (let i = 0; i < seats; i++)
+      await client.lPush(`${WAITLIST_QUEUE_NAME}-${eventId}`, JSON.stringify({ eventId, paymentInfo, idemKey }));
+
     return res.status(409).json({ message: 'Not enough seats available' });
   }
   else if (seatRes.status >= 500) {
