@@ -354,7 +354,6 @@ services:
       
   ticket-purchase:
     build: ./ticket-purchase
-    container_name: ticket-purchase
     restart: unless-stopped
     expose:
       - "3000"
@@ -378,11 +377,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 15s
+      retries: 5
+      start_period: 20s
 
   waitlist:
     build: ./waitlist
