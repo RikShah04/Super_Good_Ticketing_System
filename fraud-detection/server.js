@@ -165,22 +165,24 @@ async function callRefundService(job, decision) {
   const timeout = setTimeout(() => controller.abort(), REFUND_TIMEOUT_MS)
 
   try {
-    const response = await fetch(`REFUND_URL}/refund`, {
+    const response = await fetch(`${REFUND_URL}/refund`, {
       method: 'POST',
-      headers: { 'Conetent-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
       body: JSON.stringify({
-        purchaseID: job.orderID,
+        purchaseId: job.orderID,
         seats: job.seats,
         idemKey: `fraud-refund-${job.paymentID}`,
         reason: decision.reason,
-      })
+      }),
     })
 
     const body = await response.json().catch(() => ({}))
 
     if (!response.ok) {
-      throw new Error(`refund failed with status ${response.status}: ${body.message ?? 'unknown refund error'}`)
+      throw new Error(
+        `refund failed with status ${response.status}: ${body.message ?? 'unknown refund error'}`
+      )
     }
 
     return body
