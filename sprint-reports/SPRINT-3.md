@@ -18,7 +18,7 @@
 | ----------- | ------------------- | ----------- |
 | Henry Branham      | added payment refund endpoint, takes in paymentID and amount setting status to refunded or partial_refund in db | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/48, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/61 |
 | James Rust      | added retry logic to fraud detection DLQ, added a call to refund service on suspicious activity, added caddy load balancing |https://github.com/RikShah04/Super_Good_Ticketing_System/pull/64, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/69, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/65 |
-| [Name]      | | |
+| Ethan Pham      | added ticket-purchase /verify and /refund endpoints, waitlist queueing | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/56 |
 | Erika Lam      | refund flow (idempotent), verify purchase, payment refund endpoint, unreserve seats, DB storage, publish events | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/60 |
 | [Name]      | | |
 | Rikhav Shah      | set up waitlist functionality, added idempotency, added dlq | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/72 |
