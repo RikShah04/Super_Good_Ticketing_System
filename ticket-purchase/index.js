@@ -14,6 +14,8 @@ const NOTIFICATION_PUBSUB_NAME = process.env.NOTIFICATION_PUBSUB_NAME || 'notifi
 const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog:3005';
 const PAYMENT_URL = process.env.PAYMENT_URL || 'http://payment:3001';
 
+const INSTANCE_ID = process.env.HOSTNAME || "unknown";
+
 const RETRIES = process.env.RETRIES ? parseInt(process.env.RETRIES) : 3;
 const TTL_MIN = process.env.TTL_MIN ? parseInt(process.env.TTL_MIN) : 10;
 
@@ -74,6 +76,7 @@ app.get('/health', async (req, res) => {
     timestamp: new Date().toISOString(),
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     checks,
+    instance: INSTANCE_ID,
   });
 });
 
