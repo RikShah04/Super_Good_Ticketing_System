@@ -15,8 +15,9 @@ const db = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const PURCHASE_QUEUE_NAME = process.env.PURCHASE_QUEUE_NAME ?? 'analytics:purchase:queue';
 const BROWSE_QUEUE_NAME = process.env.BROWSE_QUEUE_NAME ?? 'analytics:browse:queue';
+const REFUND_QUEUE_NAME = process.env.REFUND_QUEUE_NAME ?? 'analytics:refund:queue';
 const DLQ_NAME = process.env.DLQ_NAME ?? `analytics:dlq`;
-const ALLOWED_TYPES = new Set(['purchase']);
+const ALLOWED_TYPES = new Set(['purchase', 'event.viewed', 'refund']);
 
 const startTime = Date.now();
 let lastJobAt = null;
@@ -41,44 +42,89 @@ async function ensureSchema() {
 }
 
 // Validate and normalize inbound queue messages before any writes.
-function validatePurchaseEvent(job) {
+function validateEvent(job) {
   if (!job || typeof job !== 'object') {
     throw new Error('event payload must be an object');
   }
 
-  if (!ALLOWED_TYPES.has(job.eventType)) {
-    throw new Error(`unsupported eventType: ${job.eventType}`);
+  const { idemKey, eventType, sourceService, eventId, emittedAt } = job;
+  if (!idemKey || !eventType || !sourceService || !eventId || !emittedAt) {
+    throw new Error('missing required envelope fields: idemKey, eventType, sourceService, eventId, emittedAt');
   }
 
-  if (!job.idemKey || !job.eventId || !job.orderId || !job.emittedAt) {
-    throw new Error('missing one of required fields: idemKey, eventId, orderId, emittedAt');
+  if (!ALLOWED_TYPES.has(eventType)) {
+    throw new Error(`unsupported eventType: ${eventType}`);
   }
 
-  const idemKey = String(job.idemKey).trim()
-  if (!idemKey) {
-    throw new Error('idemKey must be a non-empty string');
-  }
+  const normalizedIdemKey = String(idemKey).trim();
+  if (!normalizedIdemKey) throw new Error('idemKey must be a non-empty string');
 
-  const seats = Number(job.seats);
-  const priceUsd = Number(job.priceUsd);
-  if (!Number.isFinite(seats) || seats <= 0) {
-    throw new Error(`invalid seats value: ${job.seats}`);
-  }
-  if (!Number.isFinite(priceUsd) || priceUsd < 0) {
-    throw new Error(`invalid priceUsd value: ${job.priceUsd}`);
-  }
+  const userId = job.userId ? String(job.userId) : null;
 
-  return {
-    idemKey,
-    eventType: String(job.eventType),
-    sourceService: String(job.sourceService ?? 'unknown'),
-    eventId: String(job.eventId),
-    orderId: Number(job.orderId),
-    paymentId: job.paymentId ? String(job.paymentId) : null,
-    seats,
-    priceUsd,
-    emittedAt: String(job.emittedAt),
-    payload: job,
+  switch (eventType) {
+    case 'purchase': {
+      if (!job.orderId) throw new Error('purchase event missing orderId');
+      const seats = Number(job.seats);
+      const priceUsd = Number(job.priceUsd);
+      if (!Number.isFinite(seats) || seats <= 0) throw new Error(`invalid seats: ${job.seats}`);
+      if (!Number.isFinite(priceUsd) || priceUsd < 0) throw new Error(`invalid priceUsd: ${job.priceUsd}`);
+      return {
+        kind: 'purchase',
+        idemKey: normalizedIdemKey,
+        eventType,
+        sourceService: String(sourceService),
+        eventId: String(eventId),
+        userId,
+        orderId: Number(job.orderId),
+        paymentId: job.paymentId ? String(job.paymentId) : null,
+        seats,
+        priceUsd,
+        emittedAt: String(emittedAt),
+        payload: job,
+      };
+    }
+    case 'event.viewed': {
+      const seats = job.seats != null ? Number(job.seats) : null;
+      const priceUsd = job.priceUsd != null ? Number(job.priceUsd) : null;
+      if (seats !== null && (!Number.isFinite(seats) || seats < 0)) throw new Error(`invalid seats: ${job.seats}`);
+      if (priceUsd !== null && (!Number.isFinite(priceUsd) || priceUsd < 0)) throw new Error(`invalid priceUsd: ${job.priceUsd}`);
+      return {
+        kind: 'browse',
+        idemKey: normalizedIdemKey,
+        eventType,
+        sourceService: String(sourceService),
+        eventId: String(eventId),
+        userId,
+        orderId: null,
+        paymentId: null,
+        seats,
+        priceUsd,
+        emittedAt: String(emittedAt),
+        payload: job,
+      };
+    }
+    case 'refund': {
+      const seats = Number(job.seats);
+      const priceUsd = Number(job.priceUsd);
+      if (!Number.isFinite(seats) || seats <= 0) throw new Error(`invalid seats: ${job.seats}`);
+      if (!Number.isFinite(priceUsd) || priceUsd < 0) throw new Error(`invalid priceUsd: ${job.priceUsd}`);
+      return {
+        kind: 'refund',
+        idemKey: normalizedIdemKey,
+        eventType,
+        sourceService: String(sourceService),
+        eventId: String(eventId),
+        userId,
+        orderId: null,
+        paymentId: job.payload?.paymentId ? String(job.payload.paymentId) : null,
+        seats,
+        priceUsd,
+        emittedAt: String(emittedAt),
+        payload: job.payload ?? {},
+      };
+    }
+    default:
+      throw new Error(`unsupported eventType: ${eventType}`);
   }
 }
 
