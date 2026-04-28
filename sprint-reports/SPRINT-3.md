@@ -1,8 +1,8 @@
-# Sprint 3 Report — [Team Name]
+# Sprint 3 Report — Super_Good_Ticketing_System
 
 **Sprint:** 3 — Reliability and Poison Pills  
 **Tag:** `sprint-3`  
-**Submitted:** [date, before 04.28 class]
+**Submitted:** 4/28/26
 
 ---
 
@@ -17,7 +17,7 @@
 | Team Member | What They Delivered | Key Commits |
 | ----------- | ------------------- | ----------- |
 | Henry Branham      | added payment refund endpoint, takes in paymentID and amount setting status to refunded or partial_refund in db | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/48, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/61 |
-| [Name]      | | |
+| Erika Lam      | refund flow (idempotent), verify purchase, payment refund endpoint, unreserve seats, DB storage, publish events | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/60 |
 | [Name]      | | |
 | Rikhav Shah      | set up waitlist functionality, added idempotency, added dlq | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/72 |
 ---
