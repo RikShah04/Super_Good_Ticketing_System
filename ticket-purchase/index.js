@@ -141,24 +141,17 @@ app.post('/purchase', async (req, res) => {
     console.error('Not enough seats available, pushing job to waitlist queue');
 
     await markFailed(id, 'Not enough seats available');
-<<<<<<< task/ticket-purchase-refundable-seats
     await client.hSet(`purchase-data:${idemKey}`, {
       'state': 'failed',
       'status': '409',
       'response': JSON.stringify({ message: 'Not enough seats available, pushed to waitlist' }),
     });
-=======
->>>>>>> dev
     
     // push to event-specific waitlist queue
     for (let i = 0; i < seats; i++)
       await client.lPush(`${WAITLIST_QUEUE_NAME}-${eventId}`, JSON.stringify({ eventId, paymentInfo, idemKey }));
 
-<<<<<<< task/ticket-purchase-refundable-seats
     return res.status(409).json({ message: 'Not enough seats available, pushed to waitlist' });
-=======
-    return res.status(409).json({ message: 'Not enough seats available' });
->>>>>>> dev
   }
   else if (seatRes.status >= 500) {
     console.error('event-catalog error');
@@ -335,9 +328,11 @@ app.post('/verify', async (req, res) => {
 app.post('/refund', async (req, res) => {
   const { purchaseId } = req.body;
 
-  const refundableSeats = parseInt(await client.get(`ticket-purchase-refund:${purchaseId}`));
+  const refundableSeats = await client.get(`ticket-purchase-refund:${purchaseId}`);
   if (!refundableSeats)
     return res.status(400).json({ message: 'Refund request expired or invalid' });
+  
+  const seatsInt = parseInt(refundableSeats);
 
   // perform refund
   await db.query(
@@ -346,7 +341,7 @@ app.post('/refund', async (req, res) => {
   );
   await client.del(`ticket-purchase-refund:${purchaseId}`);
 
-  res.status(200).json({ message: 'Refund successful', refundedSeats: refundableSeats });
+  res.status(200).json({ message: 'Refund successful', refundedSeats: seatsInt });
 });
 
 
