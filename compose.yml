@@ -129,10 +129,14 @@ services:
       - FRAUD_HIGH_PRICE_THRESHOLD=500
       - FRAUD_MAX_SEATS_THRESHOLD=6
       - FRAUD_CARD_ATTEMPT_LIMIT=4
+      - REFUND_URL=http://refund:3000
+      - REFUND_TIMEOUT_MS=5000
     depends_on:
       fraud-db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      refund:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
@@ -170,7 +174,9 @@ services:
       - SERVICE_NAME=analytics-worker
       - DATABASE_URL=postgres://analytics:analytics@analytics-db:5432/analytics_db
       - REDIS_URL=redis://redis:6379
-      - QUEUE_NAME=analytics:queue
+      - PURCHASE_QUEUE_NAME=analytics:purchase:queue
+      - BROWSE_QUEUE_NAME=analytics:browse:queue
+      - REFUND_QUEUE_NAME=analytics:refund:queue
       - DLQ_NAME=analytics:dlq
     depends_on:
       analytics-db:
@@ -300,6 +306,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=event-catalog
       - DATABASE_URL=postgres://user:pass@events-db:5432/events-db
+      - ANALYTICS_BQUEUE_NAME=analytics:browse:queue
     depends_on:
       redis:
         condition: service_healthy
@@ -310,13 +317,55 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  users:
+    build: ./users
+    container_name: users
+    restart: unless-stopped
+    ports:
+      - "3006:3006"
+    networks:
+      - team-net
+    environment:
+      - PORT=3006
+      - SERVICE_NAME=users
+      - DATABASE_URL=postgres://user:pass@users-db:5432/users-db
+    depends_on:
+      users-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  users-db:
+    image: postgres:16
+    container_name: users-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: users-db
+    volumes:
+      - ./users/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - users-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d users-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
       
   ticket-purchase:
     build: ./ticket-purchase
-    container_name: ticket-purchase
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     networks:
       - team-net
     environment:
@@ -324,8 +373,8 @@ services:
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=ticket-purchase
       - FRAUD_QUEUE_NAME=fraud:queue
-      - ANALYTICS_QUEUE_NAME=analytics:queue
-      - WAITLIST_QUEUE_NAME=waitlist:queue
+      - ANALYTICS_PQUEUE_NAME=analytics:purchase:queue
+      - WAITLIST_QUEUE_NAME=waitlist-jobs
       - NOTIFICATION_PUBSUB_NAME=notification:pubsub
       - EVENT_CATALOG_URL=http://event-catalog:3005
       - PAYMENT_URL=http://payment:3001
@@ -337,11 +386,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 15s
+      retries: 5
+      start_period: 20s
 
   waitlist:
     build: ./waitlist
@@ -354,6 +403,13 @@ services:
       - SERVICE_NAME=waitlist-worker
       - QUEUE_NAME=waitlist:queue
       - DLQ_NAME=waitlist:dlq
+      - PAYMENT_URL=http://payment:3001
+      - TICKET_PURCHASE_URL=http://ticket-purchase:3000
+      - WORK_SIM_MIN_MS=200
+      - WORK_SIM_MAX_MS=700
+      - IDEM_TTL_SEC=86400
+      - MAX_RETRIES=3
+      - RETRY_BASE_MS=500
     depends_on:
       redis:
         condition: service_healthy
@@ -384,7 +440,9 @@ services:
       retries: 5
 
   refund: 
-    build: ./refund
+    build: 
+      context: ./refund
+      dockerfile: dockerfile
     container_name: refund
     restart: unless-stopped
     ports:
@@ -396,16 +454,18 @@ services:
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=refund
       - DATABASE_URL=postgres://user:pass@refund-db:5432/refund_db
+      - ANALYTICS_RQUEUE_NAME=analytics:refund:queue
     depends_on:
       refund-db:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 5
+      start_period: 10s
 
   refund-db:
     image: postgres:16
@@ -417,6 +477,7 @@ services:
       POSTGRES_DB: refund_db
     volumes:
       - refund-db-data:/var/lib/postgresql/data
+      - ./refund/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
       - team-net
     healthcheck:
@@ -425,6 +486,20 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+  
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+     - "3000:3000"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks:
+      - team-net
+    depends_on:
+      ticket-purchase:
+        condition: service_started
 
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
@@ -438,3 +513,4 @@ volumes:
   ticket-purchase-db-data:
   refund-db-data:
   events-db-data:
+  users-db-data:

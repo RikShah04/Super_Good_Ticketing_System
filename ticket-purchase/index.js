@@ -1,17 +1,20 @@
 import express from 'express';
 import redis from 'redis';
 import pg from 'pg';
+import validator from 'validator';
 
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 const DATABASE_URL = process.env.DATABASE_URL || 'postgres://user:pass@ticket-purchase-db:5432/ticket-purchase-db';
 const SERVICE_NAME = process.env.SERVICE_NAME || 'ticket-purchase';
 const FRAUD_QUEUE_NAME = process.env.FRAUD_QUEUE_NAME || 'fraud:queue';
-const ANALYTICS_QUEUE_NAME = process.env.ANALYTICS_QUEUE_NAME || 'analytics:queue';
-const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist:queue';
+const ANALYTICS_PQUEUE_NAME = process.env.ANALYTICS_PQUEUE_NAME || 'analytics:purchase:queue';
+const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist-jobs';
 const NOTIFICATION_PUBSUB_NAME = process.env.NOTIFICATION_PUBSUB_NAME || 'notification:pubsub';
 const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog:3005';
 const PAYMENT_URL = process.env.PAYMENT_URL || 'http://payment:3001';
+
+const INSTANCE_ID = process.env.HOSTNAME || "unknown";
 
 const RETRIES = process.env.RETRIES ? parseInt(process.env.RETRIES) : 3;
 const TTL_MIN = process.env.TTL_MIN ? parseInt(process.env.TTL_MIN) : 10;
@@ -19,6 +22,13 @@ const TTL_MIN = process.env.TTL_MIN ? parseInt(process.env.TTL_MIN) : 10;
 
 const app = express();
 app.use(express.json());
+
+// Getting userId for push to analytics
+app.use((req, _res, next) => {
+  const userId = req.header('x-user-id');
+  req.user = (userId && validator.isUUID(userId)) ? { id: userId } : null;
+  next();
+});
 
 const client = redis.createClient({ url: REDIS_URL });
 client.on('error', (err) => {
@@ -66,6 +76,7 @@ app.get('/health', async (req, res) => {
     timestamp: new Date().toISOString(),
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     checks,
+    instance: INSTANCE_ID,
   });
 });
 
@@ -98,7 +109,7 @@ app.post('/purchase', async (req, res) => {
       const statusCode = await client.hGet(`purchase-data:${idemKey}`, 'status');
       const status = statusCode ? parseInt(statusCode) : (jobState === 'success' ? 200 : 500);
 
-      return res.status(status).json({ message: `Duplicate detected; previous request completed with status ${jobState}`, ...response });
+      return res.status(status).json({ message: `Duplicate detected; previous request completed with status ${jobState}`, response });
     }
   }
 
@@ -111,9 +122,9 @@ app.post('/purchase', async (req, res) => {
 
   // start db log
   const dbRow = await db.query(
-    `INSERT INTO ticket_purchases (event_id, payment_id, seats, charge, status) 
-    VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-    [eventId, null, seats, null, 'pending']
+    `INSERT INTO ticket_purchases (event_id, payment_id, purchased_seats, refundable_seats, charge, status) 
+    VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [eventId, null, seats, seats, null, 'pending']
   );
   const id = dbRow.rows[0].id;
 
@@ -127,14 +138,31 @@ app.post('/purchase', async (req, res) => {
   // check seatRes status for errors
   if (seatRes.status == 404) {
     console.error('Event not found');
+
     await markFailed(id, 'Event not found');
+    await client.hSet(`purchase-data:${idemKey}`, {
+      'state': 'failed',
+      'status': '404',
+      'response': JSON.stringify({ message: 'Event not found' }),
+    });
+
     return res.status(404).json({ message: 'Event not found' });
   }
   else if (seatRes.status == 409) {
     console.error('Not enough seats available, pushing job to waitlist queue');
+
     await markFailed(id, 'Not enough seats available');
-    // client.lpush(WAITLIST_QUEUE_NAME, JSON.stringify({ eventId, seats, paymentInfo }));
-    return res.status(409).json({ message: 'Not enough seats available' });
+    await client.hSet(`purchase-data:${idemKey}`, {
+      'state': 'failed',
+      'status': '409',
+      'response': JSON.stringify({ message: 'Not enough seats available, pushed to waitlist' }),
+    });
+    
+    // push to event-specific waitlist queue
+    for (let i = 0; i < seats; i++)
+      await client.lPush(`${WAITLIST_QUEUE_NAME}-${eventId}`, JSON.stringify({ eventId, paymentInfo, idemKey }));
+
+    return res.status(409).json({ message: 'Not enough seats available, pushed to waitlist' });
   }
   else if (seatRes.status >= 500) {
     console.error('event-catalog error');
@@ -142,8 +170,8 @@ app.post('/purchase', async (req, res) => {
     return res.status(500).json({ message: 'Event-catalog service error' });
   }
 
-  const { message, cost, seatsReserved } = await seatRes.json();
-  const price = parseFloat(cost);
+  const { message, seatCost, totalCost, seatsReserved } = await seatRes.json();
+  const price = parseFloat(seatCost);
   console.log('Seat reserved');
 
   // update db log with price
@@ -190,12 +218,13 @@ app.post('/purchase', async (req, res) => {
           orderID: id,
           paymentInfo: { cc, cardType },
           seats,
+          refundableSeats: seats,
           price
         })
       );
 
       await client.lPush(
-        ANALYTICS_QUEUE_NAME,
+        ANALYTICS_PQUEUE_NAME,
         JSON.stringify({
           schemaVersion: 1,
           eventType: 'purchase',
@@ -205,7 +234,9 @@ app.post('/purchase', async (req, res) => {
           eventId,
           orderId: id,
           paymentId: paymentData.paymentID,
+          userId: req.user?.id ?? null,
           seats,
+          refundableSeats: seats,
           priceUsd: price,
         })
       );
@@ -216,7 +247,9 @@ app.post('/purchase', async (req, res) => {
           eventId,
           paymentId: paymentData.paymentID,
           orderId: id,
+          type: 'purchase',
           seats,
+          refundableSeats: seats,
           cc,
           cardType,
           price,
@@ -231,7 +264,7 @@ app.post('/purchase', async (req, res) => {
       });
 
       console.log('Payment successful');
-      return res.status(200).json({ message: 'Purchase successful' });
+      return res.status(200).json({ message: 'Purchase successful', purchaseId: id });
     }
 
     // on failures...
@@ -280,6 +313,48 @@ app.post('/purchase', async (req, res) => {
       }
     }
   }
+});
+
+app.post('/verify', async (req, res) => {
+  const { purchaseId, seats } = req.body;
+  
+  const dbRes = await db.query(
+    'SELECT * FROM ticket_purchases WHERE id = $1',
+    [purchaseId]
+  );
+
+  if (dbRes.rows.length === 0)
+    return res.status(404).json({ message: 'Purchase not found' });
+  const purchase = dbRes.rows[0];
+
+  if (purchase.refundable_seats < seats)
+    return res.status(400).json({ message: 'Not enough refundable seats available' });
+
+  // cache refund in Redis for /refund to confirm
+  // if too much time has passed, the refund will cancel
+  await client.set(`ticket-purchase-refund:${purchaseId}`, seats, { EX: TTL_MIN * 60 });
+
+  const purchasePayload = { ...purchase, seats: purchase.purchased_seats };
+  res.status(200).json({ ...purchasePayload, purchase: purchasePayload });
+});
+
+app.post('/refund', async (req, res) => {
+  const { purchaseId } = req.body;
+
+  const refundableSeats = await client.get(`ticket-purchase-refund:${purchaseId}`);
+  if (!refundableSeats)
+    return res.status(400).json({ message: 'Refund request expired or invalid' });
+  
+  const seatsInt = parseInt(refundableSeats);
+
+  // perform refund
+  await db.query(
+    'UPDATE ticket_purchases SET refundable_seats = refundable_seats - $2 WHERE id = $1',
+    [purchaseId, refundableSeats]
+  );
+  await client.del(`ticket-purchase-refund:${purchaseId}`);
+
+  res.status(200).json({ message: 'Refund successful', refundedSeats: seatsInt });
 });
 
 

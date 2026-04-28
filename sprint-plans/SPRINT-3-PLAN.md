@@ -24,6 +24,14 @@ For this sprint, we will be adding DLQs and poison pill handling to the workers 
 | Ethan      | `ticket-purchase/` |
 | Henry      | `payment/`    |
 | Erika      | `refund/`     |
+| James      | `fraud-detection/` |
+| Jonathan      | `analytics/` |
+| Rikhav      | `waitlist/` |
+| Jasper      | `event-catalog/` |
+| Ian        | `event-catalog/`, `k6` |
+| Ethan      | `ticket-purchase/` |
+| Henry      | `payment/`    |
+| Erika      | `refund/`     |
 
 ---
 
@@ -46,10 +54,10 @@ For this sprint, we will be adding DLQs and poison pill handling to the workers 
 
 - [ ] waitlist dlq, health
 - [ ] waitlist process:
-  - [ ] ticket-purchase /purchase pushes job when failing due to insufficient seating
-  - [ ] event-catalog /unreserve_seat pushes eventId, worker uses it to pop/promote job (NOT refund, seats can be unreserved without         refund via ticket-    purchase)
-  - [ ] separate waitlist queues for each event (?)
-  - [ ] sync-calls ticket-purchase /purchase with job data, awaiting response --> on fail, DLQ
+      - ticket-purchase /purchase pushes job when failing due to insufficient seating
+      - event-catalog /unreserve_seat pushes eventId, worker uses it to pop/promote job (NOT refund, seats can be unreserved without         refund via ticket-purchase)
+      - separate waitlist queues for each event (?)
+      - sync-calls ticket-purchase /purchase with job data, awaiting response --> on fail, DLQ
 
 ### Jasper
 
@@ -74,16 +82,15 @@ For this sprint, we will be adding DLQs and poison pill handling to the workers 
 ### Erika
 
 - [ ] Refund Process:
-  - [ ] idempotent
-  - [ ] requires purchaseId, seats
-  - [ ] calls ticket-purchase /verify to verify purchaseId, validate seats
-  - [ ] ticket-purchase /verify returns eventId, paymentId
-  - [ ] calls payment with paymentId to refund purchase
-  - [ ] calls event-catalog /unreserve_seats with eventId to unreserve seat
-  - [ ] push for analytics, notifications, waitlist
-  - [ ] sends { type: 'refund' } to notifications
-  - [ ] stores refund details in db (id, purchaseId, eventId, paymentId, seats, price, etc.)
-
+      - idempotent
+      - requires purchaseId, seats
+      - calls ticket-purchase /verify to verify purchaseId, validate seats
+      - ticket-purchase /verify returns eventId, paymentId
+      - calls payment with paymentId to refund purchase
+      - calls event-catalog /unreserve_seats with eventId to unreserve seat
+      - push for analytics, notifications, waitlist
+        - sends { type: 'refund' } to notifications
+      - stores refund details in db (id, purchaseId, eventId, paymentId, seats, price, etc.)
 ---
 
 ## Risks
