@@ -8,9 +8,15 @@ const { Pool } = pg;
 const app = express();
 const redis = createClient({ url: process.env.REDIS_URL });
 await redis.connect();
-// Keep a dedicated client for block`ing BRPOP so health/LLEN checks stay responsive.
-const workerRedis = createClient({ url: process.env.REDIS_URL });
-await workerRedis.connect();
+
+// Dedicated blocking clients — one per loop so health/LLEN checks on `redis` stay responsive.
+const purchaseWorkerRedis = createClient({ url: process.env.REDIS_URL });
+await purchaseWorkerRedis.connect();
+const browseWorkerRedis = createClient({ url: process.env.REDIS_URL });
+await browseWorkerRedis.connect();
+const refundWorkerRedis = createClient({ url: process.env.REDIS_URL });
+await refundWorkerRedis.connect();
+
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 
 const PURCHASE_QUEUE_NAME = process.env.PURCHASE_QUEUE_NAME ?? 'analytics:purchase:queue';
@@ -20,13 +26,15 @@ const DLQ_NAME = process.env.DLQ_NAME ?? `analytics:dlq`;
 const ALLOWED_TYPES = new Set(['purchase', 'event.viewed', 'refund']);
 
 const startTime = Date.now();
-let lastJobAt = null;
-let jobsProcessed = 0;
+const stats = {
+  purchase: { lastJobAt: null, jobsProcessed: 0 },
+  browse:   { lastJobAt: null, jobsProcessed: 0 },
+  refund:   { lastJobAt: null, jobsProcessed: 0 },
+};
 
-
-export function recordJobProcessed() {
-  lastJobAt = new Date().toISOString();
-  jobsProcessed++;
+export function recordJobProcessed(kind) {
+  stats[kind].lastJobAt = new Date().toISOString();
+  stats[kind].jobsProcessed++;
 }
 
 // Load and run the worker schema from disk so SQL stays in schema.sql.
@@ -259,27 +267,41 @@ async function processRefundEvent(event) {
   recordJobProcessed('refund');
 }
 
-// Main consumer loop: block on queue, process valid jobs, DLQ invalid ones.
-async function mainAnalyticsLoop() {
+async function handle(raw, kind) {
+  try {
+    const event = validateEvent(JSON.parse(raw));
+    if (event.kind !== kind) throw new Error(`eventType ${event.eventType} arrived on ${kind} queue`);
+    if (kind === 'purchase')    await processPurchaseEvent(event);
+    else if (kind === 'browse') await processBrowseEvent(event);
+    else                        await processRefundEvent(event);
+  } catch (err) {
+    console.error(`[analytics-worker] bad ${kind} job (${err.message}): ${raw}`);
+    try { await redis.lPush(DLQ_NAME, raw); }
+    catch (dlqErr) { console.error(`[analytics-worker] FAILED DLQ write: ${dlqErr.message}`); }
+  }
+}
+
+async function purchaseLoop() {
   while (true) {
-    const result = await workerRedis.brPop(PURCHASE_QUEUE_NAME, 0);
-    if (!result?.element) continue;
+    const r = await purchaseWorkerRedis.brPop(PURCHASE_QUEUE_NAME, 0);
+    if (!r?.element) continue;
+    await handle(r.element, 'purchase');
+  }
+}
 
-    try {
-      const parsed = JSON.parse(result.element);
-      const event = validatePurchaseEvent(parsed);
-      await processPurchaseEvent(event);
-    } catch (err) {
-      console.error(`[analytics-worker] bad job (${err.message}): ${result.element}`);
+async function browseLoop() {
+  while (true) {
+    const r = await browseWorkerRedis.brPop(BROWSE_QUEUE_NAME, 0);
+    if (!r?.element) continue;
+    await handle(r.element, 'browse');
+  }
+}
 
-      // Extra careful try catch within DLQ write
-      try {
-        await redis.lPush(DLQ_NAME, result.element);
-        console.error(`[analytics-worker] moved bad job to DLQ`);
-      } catch (dlqErr) {
-        console.error(`[analytics-worker] FAILED to write to DLQ: ${dlqErr.message}`);
-      }
-    }
+async function refundLoop() {
+  while (true) {
+    const r = await refundWorkerRedis.brPop(REFUND_QUEUE_NAME, 0);
+    if (!r?.element) continue;
+    await handle(r.element, 'refund');
   }
 }
 
@@ -308,33 +330,43 @@ app.get('/health', async (req, res) => {
     healthy = false;
   }
 
-  // Check queue depth — flag if backlog is growing
+  // Check queue depths — flag if any queue is backing up or DLQ is non-empty
   try {
-    const depth = await redis.lLen(PURCHASE_QUEUE_NAME);
-    const dlqDepth = await redis.lLen(DLQ_NAME);
+    const [purchaseDepth, browseDepth, refundDepth, dlqDepth] = await Promise.all([
+      redis.lLen(PURCHASE_QUEUE_NAME),
+      redis.lLen(BROWSE_QUEUE_NAME),
+      redis.lLen(REFUND_QUEUE_NAME),
+      redis.lLen(DLQ_NAME),
+    ]);
     checks.queue = {
-      status: depth < 1000 && dlqDepth === 0 ? 'healthy' : 'degraded',
-      depth,
-      dlq_depth: dlqDepth,
+      status: purchaseDepth < 1000 && browseDepth < 1000 && refundDepth < 1000 && dlqDepth === 0
+        ? 'healthy' : 'degraded',
+      purchase_depth: purchaseDepth,
+      browse_depth:   browseDepth,
+      refund_depth:   refundDepth,
+      dlq_depth:      dlqDepth,
     };
+    if (checks.queue.status === 'degraded') healthy = false;
   } catch (err) {
     checks.queue = { status: 'unhealthy', error: err.message };
     healthy = false;
   }
 
-  // Check that the worker is actually processing jobs
-  const secondsSinceLastJob = lastJobAt
-    ? (Date.now() - new Date(lastJobAt).getTime()) / 1000
-    : null;
-  checks.worker = {
-    status:
-      secondsSinceLastJob === null || secondsSinceLastJob < 60
-        ? 'healthy'
-        : 'degraded',
-    last_job_at: lastJobAt ?? 'never',
-    jobs_processed: jobsProcessed,
-    seconds_since_last_job: secondsSinceLastJob,
-  };
+  // Per-kind worker stats
+  const workerStats = {};
+  for (const kind of ['purchase', 'browse', 'refund']) {
+    const { lastJobAt, jobsProcessed } = stats[kind];
+    const secondsSince = lastJobAt
+      ? (Date.now() - new Date(lastJobAt).getTime()) / 1000
+      : null;
+    workerStats[kind] = {
+      status: secondsSince === null || secondsSince < 60 ? 'healthy' : 'degraded',
+      last_job_at: lastJobAt ?? 'never',
+      jobs_processed: jobsProcessed,
+      seconds_since_last_job: secondsSince,
+    };
+  }
+  checks.worker = workerStats;
 
   res.status(healthy ? 200 : 503).json({
     status: healthy ? 'healthy' : 'unhealthy',
@@ -351,7 +383,6 @@ app.listen(process.env.PORT ?? 3000, () => {
   console.log(`[analytics-worker] listening on ${process.env.PORT ?? 3000}`);
 })
 
-mainAnalyticsLoop().catch(err => {
-  console.error('[analytics-worker] worker loop crashed', err);
-  process.exit(1);
-})
+purchaseLoop().catch(err => { console.error('[analytics-worker] purchase loop crashed', err); process.exit(1); });
+browseLoop().catch(err   => { console.error('[analytics-worker] browse loop crashed',   err); process.exit(1); });
+refundLoop().catch(err   => { console.error('[analytics-worker] refund loop crashed',   err); process.exit(1); });

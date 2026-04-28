@@ -172,6 +172,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - PURCHASE_QUEUE_NAME=analytics:purchase:queue
       - BROWSE_QUEUE_NAME=analytics:browse:queue
+      - REFUND_QUEUE_NAME=analytics:refund:queue
       - DLQ_NAME=analytics:dlq
     depends_on:
       analytics-db:
