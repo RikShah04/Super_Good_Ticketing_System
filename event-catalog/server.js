@@ -12,6 +12,7 @@ const DATABASE_URL = process.env.DATABASE_URL || "postgres://user:pass@events-db
 const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist:queue';
 
 const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
+const ANALYTICS_BQUEUE_NAME = process.env.ANALYTICS_BQUEUE_NAME || 'analytics:browse:queue';
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
@@ -56,18 +57,18 @@ function publishEvent({
     extra = {}
 }) {
     const eventPayload = {
-        idem_key: randomUUID(),
-        event_type: eventType,
-        source_service: SERVICE_NAME,
-        event_id: eventId,
-        user_id: userId || null,
-        seats: seats,
-        price_usd: priceUsd,
-        emitted_at: new Date().toISOString(),
-        payload: extra
+        idemKey: randomUUID(),
+        eventType,
+        sourceService: SERVICE_NAME,
+        eventId,
+        userId: userId || null,
+        seats,
+        priceUsd,
+        emittedAt: new Date().toISOString(),
+        payload: extra,
     };
 
-    client.lPush("analytics:queue", JSON.stringify(eventPayload))
+    client.lPush(ANALYTICS_BQUEUE_NAME, JSON.stringify(eventPayload))
         .catch(err => {
             console.error("Failed to enqueue analytics event: ", err.message);
         });

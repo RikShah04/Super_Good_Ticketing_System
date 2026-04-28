@@ -1,9 +1,17 @@
 import express from "express";
 import redis from "redis";
 import pg from "pg";
+import validator from "validator";
 
 const app = express();
 app.use(express.json());
+
+// Getting userId for push to analytics
+app.use((req, _res, next) => {
+  const userId = req.header("x-user-id");
+  req.user = (userId && validator.isUUID(userId)) ? { id: userId } : null;
+  next();
+});
 
 const port = process.env.PORT || 3000;
 const redisUrl = process.env.REDIS_URL || "redis://redis:6379";
@@ -14,7 +22,7 @@ const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog
 const PAYMENT_URL = process.env.PAYMENT_URL || 'http://payment:3001';
 const TICKET_PURCHASE_URL = process.env.TICKET_PURCHASE_URL || "http://ticket-purchase:3000";
 
-const ANALYTICS_QUEUE_NAME = process.env.ANALYTICS_QUEUE_NAME || 'analytics:queue';
+const ANALYTICS_RQUEUE_NAME = process.env.ANALYTICS_RQUEUE_NAME || 'analytics:refund:queue';
 const SEAT_RELEASED_PUBSUB_NAME = process.env.SEAT_RELEASED_PUBSUB_NAME || "seat-released";
 const NOTIFICATION_PUBSUB_NAME = process.env.NOTIFICATION_PUBSUB_NAME || 'notification:pubsub';
 const TTL_MIN = process.env.TTL_MIN ? parseInt(process.env.TTL_MIN) : 10;
@@ -152,7 +160,8 @@ app.post("/refund", async (req, res) => {
       return res.status(verifyRes.status).json({ message });
     }
 
-    const purchase = await verifyRes.json();  
+    const verifyData = await verifyRes.json();
+    const purchase = verifyData.purchase ?? verifyData;
 
     //Get data from the verified purchase.
     // ticket_purchases.charge is the total original purchase cost
@@ -289,18 +298,18 @@ app.post("/refund", async (req, res) => {
     }
 
     //Push refund event to analytics queue.
-    await client.lPush(
-      ANALYTICS_QUEUE_NAME,
-      JSON.stringify({
-        type: "refund",
-        refundId,
-        purchaseId,
-        eventId,
-        paymentId,
-        seats,
-        amount: refundAmount,
-      })
-    );
+    const analyticsPayload = {
+      idemKey: String(refundId),
+      eventType: "refund",
+      sourceService: SERVICE_NAME,
+      eventId,
+      userId: req.user?.id ?? null,
+      seats,
+      priceUsd: refundAmount,
+      emittedAt: new Date().toISOString(),
+      payload: { refundId, purchaseId, paymentId },
+    };
+    await client.lPush(ANALYTICS_RQUEUE_NAME, JSON.stringify(analyticsPayload));
 
     //publish seat-released event if seat opens up 
     await client.publish(

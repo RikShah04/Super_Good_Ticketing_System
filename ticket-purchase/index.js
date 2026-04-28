@@ -1,14 +1,15 @@
 import express from 'express';
 import redis from 'redis';
 import pg from 'pg';
+import validator from 'validator';
 
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 const DATABASE_URL = process.env.DATABASE_URL || 'postgres://user:pass@ticket-purchase-db:5432/ticket-purchase-db';
 const SERVICE_NAME = process.env.SERVICE_NAME || 'ticket-purchase';
 const FRAUD_QUEUE_NAME = process.env.FRAUD_QUEUE_NAME || 'fraud:queue';
-const ANALYTICS_QUEUE_NAME = process.env.ANALYTICS_QUEUE_NAME || 'analytics:queue';
-const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist:queue';
+const ANALYTICS_PQUEUE_NAME = process.env.ANALYTICS_PQUEUE_NAME || 'analytics:purchase:queue';
+const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist-jobs';
 const NOTIFICATION_PUBSUB_NAME = process.env.NOTIFICATION_PUBSUB_NAME || 'notification:pubsub';
 const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog:3005';
 const PAYMENT_URL = process.env.PAYMENT_URL || 'http://payment:3001';
@@ -21,6 +22,13 @@ const TTL_MIN = process.env.TTL_MIN ? parseInt(process.env.TTL_MIN) : 10;
 
 const app = express();
 app.use(express.json());
+
+// Getting userId for push to analytics
+app.use((req, _res, next) => {
+  const userId = req.header('x-user-id');
+  req.user = (userId && validator.isUUID(userId)) ? { id: userId } : null;
+  next();
+});
 
 const client = redis.createClient({ url: REDIS_URL });
 client.on('error', (err) => {
@@ -216,7 +224,7 @@ app.post('/purchase', async (req, res) => {
       );
 
       await client.lPush(
-        ANALYTICS_QUEUE_NAME,
+        ANALYTICS_PQUEUE_NAME,
         JSON.stringify({
           schemaVersion: 1,
           eventType: 'purchase',
@@ -226,6 +234,7 @@ app.post('/purchase', async (req, res) => {
           eventId,
           orderId: id,
           paymentId: paymentData.paymentID,
+          userId: req.user?.id ?? null,
           seats,
           refundableSeats: seats,
           priceUsd: price,
@@ -325,7 +334,8 @@ app.post('/verify', async (req, res) => {
   // if too much time has passed, the refund will cancel
   await client.set(`ticket-purchase-refund:${purchaseId}`, seats, { EX: TTL_MIN * 60 });
 
-  res.status(200).json({ ...purchase });
+  const purchasePayload = { ...purchase, seats: purchase.purchased_seats };
+  res.status(200).json({ ...purchasePayload, purchase: purchasePayload });
 });
 
 app.post('/refund', async (req, res) => {
