@@ -399,6 +399,11 @@ services:
       - DLQ_NAME=waitlist:dlq
       - PAYMENT_URL=http://payment:3001
       - TICKET_PURCHASE_URL=http://ticket-purchase:3000
+      - WORK_SIM_MIN_MS=200
+      - WORK_SIM_MAX_MS=700
+      - IDEM_TTL_SEC=86400
+      - MAX_RETRIES=3
+      - RETRY_BASE_MS=500
     depends_on:
       redis:
         condition: service_healthy

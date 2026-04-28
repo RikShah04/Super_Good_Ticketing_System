@@ -5,9 +5,18 @@ import redis from 'redis';
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
 const SERVICE_NAME = process.env.SERVICE_NAME || 'waitlist-worker';
 const QUEUE_NAME = process.env.QUEUE_NAME || 'waitlist-jobs';
-const DLQ_NAME = process.env.DLQ_NAME || `${QUEUE_NAME}:dlq`;
+
 const PAYMENT_URL = process.env.PAYMENT_URL || "http://payment:3001"
 const TICKET_PURCHASE_URL = process.env.TICKET_PURCHASE_URL || "http://ticket-purchase:3000"
+
+const DLQ_NAME = process.env.DLQ_NAME || `${QUEUE_NAME}:dlq`;
+const minMs = Number(process.env.WORK_SIM_MIN_MS || 200)
+const maxMs = Number(process.env.WORK_SIM_MAX_MS || 700)
+const ttlSec = Number(process.env.IDEM_TTL_SEC || 86400)
+const maxRetries = Number(process.env.MAX_RETRIES || 3)
+const retryBaseMs = Number(process.env.RETRY_BASE_MS || 500)
+
+
 
 const app = express();
 
