@@ -9,6 +9,8 @@ const port = Number(process.env.PORT || '3005');
 const SERVICE_NAME = process.env.SERVICE_NAME || 'event-catalog';
 
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://user:pass@events-db:5432/events-db"
+const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist:queue';
+
 const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
@@ -298,9 +300,14 @@ app.post("/unreserve-seats", async (req, res) => {
             'UPDATE eventcatalog SET availableseats = availableseats + $1 WHERE id = $2',
             [seats, event_id]
         );
-
+        
         await db.query('COMMIT');
         await client.del(`event:${event_id}`);
+
+        for (let i = 0; i < seats; i++) {
+            await client.lPush(WAITLIST_QUEUE_NAME, JSON.stringify({ eventId: event_id, paymentInfo: null, idemKey: null }));
+        }   
+
         return res.status(200).json({
             message: 'Refund Successful!',
             seatCost: event.priceusd,
