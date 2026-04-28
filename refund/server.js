@@ -144,7 +144,7 @@ app.post("/refund", async (req, res) => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({purchaseId, seats, refundId})
+      body: JSON.stringify({purchaseId, seats})
     });
 
     if(!verifyRes.ok){
@@ -160,14 +160,13 @@ app.post("/refund", async (req, res) => {
       return res.status(verifyRes.status).json({ message });
     }
 
-    const verifyData = await verifyRes.json();
-    const purchase = verifyData.purchase;
+    const purchase = await verifyRes.json();  
 
     //Get data from the verified purchase.
     // ticket_purchases.charge is the total original purchase cost
     const eventId = purchase.event_id;
     const paymentId = purchase.payment_id;
-    const originalSeats = purchase.seats;
+    const originalSeats = purchase.purchased_seats;
     const originalCharge = purchase.charge;
 
     if (!eventId || !paymentId || !originalSeats || !originalCharge) {
@@ -267,19 +266,35 @@ app.post("/refund", async (req, res) => {
       return res.status(unreserveRes.status).json({ message });
     }
 
-    // 8. TODO later:
-    // Tell ticket-purchase how many seats were successfully refunded.
-    // This is where the future ticket-purchase endpoint would be called.
-    //
-    // await fetch(`${TICKET_PURCHASE_URL}/refund-completed`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({
-    //     purchaseId,
-    //     refundId,
-    //     seats,
-    //   }),
-    // });
+    const ticketPurchaseRefundRes = await fetch(`${TICKET_PURCHASE_URL}/refund`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        purchaseId,
+      }),
+    });
+
+    if (!ticketPurchaseRefundRes.ok) {
+      const ticketPurchaseRefundBody = await ticketPurchaseRefundRes.json().catch(() => ({}));
+      const message = ticketPurchaseRefundBody.message || "Failed to update ticket-purchase refund";
+
+      await db.query(
+        `UPDATE refunds
+        SET status = $2, reason = $3
+        WHERE id = $1`,
+        [refundId, "failed", message]
+      );
+
+      await client.hSet(refundDataKey(idemKey), {
+        state: "failed",
+        status: String(ticketPurchaseRefundRes.status),
+        response: JSON.stringify({ message }),
+      });
+
+      return res.status(ticketPurchaseRefundRes.status).json({ message });
+    }
 
     //Push refund event to analytics queue.
     const analyticsPayload = {
@@ -373,8 +388,6 @@ app.post("/refund", async (req, res) => {
       error: err.message,
     });
   }
-
-
 });
 
 
