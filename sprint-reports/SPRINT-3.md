@@ -19,7 +19,7 @@
 | Henry Branham      | added payment refund endpoint, takes in paymentID and amount setting status to refunded or partial_refund in db | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/48, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/61 |
 | [Name]      | | |
 | [Name]      | | |
-
+| Rikhav Shah      | set up waitlist functionality, added idempotency, added dlq | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/72 |
 ---
 
 ## What Is Working
