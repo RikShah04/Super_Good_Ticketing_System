@@ -25,6 +25,8 @@ client.on('error', err => {
 
 await client.connect();
 
+await pool.connect();
+
 app.use(express.json());
 
 // Middleware to retrieve simulated userId
@@ -63,7 +65,7 @@ function publishEvent({
         payload: extra
     };
 
-    client.rPush("analytics:queue", JSON.stringify(eventPayload))
+    client.lPush("analytics:queue", JSON.stringify(eventPayload))
         .catch(err => {
             console.error("Failed to enqueue analytics event: ", err.message);
         });
@@ -185,7 +187,7 @@ app.get('/events/:id', async (req, res) => {
         // Now we cache it
         await client.setEx(cacheKey, 60, JSON.stringify(event));
 
-        res.json(event)
+        res.json(event);
         
         publishEvent({
             eventType: "event.viewed",
