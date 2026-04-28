@@ -72,7 +72,7 @@ app.post('/process', async (req, res) => {
   if (cardType && !['Amex', 'Visa', 'Master'].includes(cardType)){
     return returnError(res, 400, 'Invalid Card Type');
   }
-  if(price && (price < 0)){
+  if (price == null || isNaN(Number(price)) || Number(price) < 0){
     return returnError(res, 400, 'Invalid Payment Amount');
   }
 
@@ -87,7 +87,7 @@ app.post('/process', async (req, res) => {
   // Store in DB
   try{
 
-    pool.query(
+    await pool.query(
       `INSERT INTO payments (payment_id, token, price, amount_refunded, status)
        VALUES ($1, $2, $3, $4, $5)`,
       [paymentID, paymentToken, price, 0, 'success']
