@@ -300,6 +300,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=event-catalog
       - DATABASE_URL=postgres://user:pass@events-db:5432/events-db
+      - WAITLIST_QUEUE_NAME=waitlist:queue
     depends_on:
       redis:
         condition: service_healthy

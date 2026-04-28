@@ -139,9 +139,9 @@ async function processJob(job) {
 
   try {
     let event_queue = QUEUE_NAME + '-' + event_id;
-    let waitlist_item = await client.lPop(event_queue);
+    const rawItem = await client.lPop(event_queue);
 
-    if (!waitlist_item) {
+    if (!rawItem) {
       await client.hSet(
         keys.job(job.jobId),
         JobStatus('done', {
@@ -155,7 +155,15 @@ async function processJob(job) {
       return;
     }
 
-    const { eventId, paymentInfo, idemKey } = JSON.parse(waitlist_item);
+    let parsed;
+    try {
+      parsed = JSON.parse(rawItem);
+    } catch {
+      await client.lPush(event_queue, rawItem);
+      throw new Error('invalid JSON in waitlist queue item');
+    }
+
+    const { eventId, paymentInfo, idemKey } = parsed;
     const seats = 1;
 
     const key = processedKey(idemKey);
@@ -164,6 +172,7 @@ async function processJob(job) {
       EX: config.ttlSec,
     });
     if (!claimed) {
+      await client.lPush(event_queue, rawItem);
       await client.hSet(
         keys.job(job.jobId),
         JobStatus('done', {
@@ -177,47 +186,54 @@ async function processJob(job) {
       return;
     }
 
+    let response;
     try {
-      const response = await fetch(`${TICKET_PURCHASE_URL}/purchase`, {
+      response = await fetch(`${TICKET_PURCHASE_URL}/purchase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ eventId, seats, paymentInfo, idemKey }),
       });
-
-      const text = await response.text();
-      let data;
-      try {
-        data = text ? JSON.parse(text) : {};
-      } catch {
-        data = { raw: text };
-      }
-
-      if (!response.ok) {
-        await client.del(key);
-        throw new Error(`purchase HTTP ${response.status}: ${text.slice(0, 200)}`);
-      }
-
-      console.log(`Event ${event_id}: status=${response.status}`, data);
-
-      const doneAt = new Date().toISOString();
-      await client.hSet(
-        keys.job(job.jobId),
-        JobStatus('done', {
-          updatedAt: doneAt,
-          finishedAt: doneAt,
-          idempotency: config.mode === 'idem' ? 'applied' : 'none',
-        }),
-      );
-
-      console.log(
-        `pipeline=${config.pipeline} mode=${config.mode} job=${job.jobId} status=done`,
-      );
-    } catch (err) {
+    } catch (fetchErr) {
       await client.del(key);
-      throw err;
+      await client.lPush(event_queue, rawItem);
+      throw new Error(`fetch failed: ${fetchErr?.message ?? fetchErr}`);
     }
+
+    const text = await response.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { raw: text };
+    }
+
+    if (!response.ok) {
+      await client.del(key);
+      await client.lPush(event_queue, rawItem);
+      throw new Error(`purchase HTTP ${response.status}: ${text.slice(0, 200)}`);
+    }
+
+    console.log(`Event ${event_id}: status=${response.status}`, data);
+
+    const doneAt = new Date().toISOString();
+    await client.hSet(
+      keys.job(job.jobId),
+      JobStatus('done', {
+        updatedAt: doneAt,
+        finishedAt: doneAt,
+        idempotency: config.mode === 'idem' ? 'applied' : 'none',
+      }),
+    );
+
+    console.log(
+      `pipeline=${config.pipeline} mode=${config.mode} job=${job.jobId} status=done`,
+    );
   } catch (err) {
     const nextAttempt = attempt + 1;
+
+    if (config.mode === 'idem' && nextAttempt <= config.maxRetries){
+      await client.del(keys.processed(job.jobId)).catch(() => {});
+    }
 
     if (nextAttempt > config.maxRetries) {
       await sendToDlq(job, err.message);
