@@ -128,13 +128,53 @@ function validateEvent(job) {
   }
 }
 
-async function processPurchaseEvent(event) {
-  // First write is idempotent: duplicates are ignored by idem_key conflict handling.
+async function processBrowseEvent(event) {
   const inserted = await db.query(
     `INSERT INTO analytics_events
-      (idem_key, event_type, source_service, event_id, order_id, payment_id, seats, price_usd, emitted_at, payload)
+      (idem_key, event_type, source_service, event_id, order_id, payment_id, user_id, seats, price_usd, emitted_at, payload)
      VALUES
-      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+      ($1, $2, $3, $4, NULL, NULL, $5, $6, $7, $8, $9::jsonb)
+     ON CONFLICT (idem_key) DO NOTHING
+     RETURNING idem_key`,
+    [
+      event.idemKey,
+      event.eventType,
+      event.sourceService,
+      event.eventId,
+      event.userId,
+      event.seats,
+      event.priceUsd,
+      event.emittedAt,
+      JSON.stringify(event.payload),
+    ]
+  );
+
+  if (inserted.rowCount === 0) {
+    console.log(`[analytics-worker] duplicate browse ignored ${event.idemKey}`);
+    recordJobProcessed('browse');
+    return;
+  }
+
+  await db.query(
+    `INSERT INTO event_view_aggregates (event_id, view_count, last_viewed_at)
+     VALUES ($1, 1, NOW())
+     ON CONFLICT (event_id)
+     DO UPDATE SET
+       view_count = event_view_aggregates.view_count + 1,
+       last_viewed_at = NOW()`,
+    [event.eventId]
+  );
+
+  console.log(`[analytics-worker] processed browse ${event.idemKey}`);
+  recordJobProcessed('browse');
+}
+
+async function processPurchaseEvent(event) {
+  const inserted = await db.query(
+    `INSERT INTO analytics_events
+      (idem_key, event_type, source_service, event_id, order_id, payment_id, user_id, seats, price_usd, emitted_at, payload)
+     VALUES
+      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
      ON CONFLICT (idem_key) DO NOTHING
      RETURNING idem_key`,
     [
@@ -144,6 +184,7 @@ async function processPurchaseEvent(event) {
       event.eventId,
       event.orderId,
       event.paymentId,
+      event.userId,
       event.seats,
       event.priceUsd,
       event.emittedAt,
@@ -152,12 +193,11 @@ async function processPurchaseEvent(event) {
   );
 
   if (inserted.rowCount === 0) {
-    console.log(`[analytics-worker] duplicate ignored ${event.idemKey}`);
-    recordJobProcessed();
+    console.log(`[analytics-worker] duplicate purchase ignored ${event.idemKey}`);
+    recordJobProcessed('purchase');
     return;
   }
 
-  // Aggregate updates run only for first-seen events.
   await db.query(
     `INSERT INTO event_sales_aggregates (event_id, tickets_sold, gross_revenue, purchase_events, updated_at)
      VALUES ($1, $2, $3, 1, NOW())
@@ -171,7 +211,52 @@ async function processPurchaseEvent(event) {
   );
 
   console.log(`[analytics-worker] processed purchase ${event.idemKey}`);
-  recordJobProcessed();
+  recordJobProcessed('purchase');
+}
+
+async function processRefundEvent(event) {
+  const inserted = await db.query(
+    `INSERT INTO analytics_events
+      (idem_key, event_type, source_service, event_id, order_id, payment_id, user_id, seats, price_usd, emitted_at, payload)
+     VALUES
+      ($1, $2, $3, $4, NULL, $5, $6, $7, $8, $9, $10::jsonb)
+     ON CONFLICT (idem_key) DO NOTHING
+     RETURNING idem_key`,
+    [
+      event.idemKey,
+      event.eventType,
+      event.sourceService,
+      event.eventId,
+      event.paymentId,
+      event.userId,
+      event.seats,
+      event.priceUsd,
+      event.emittedAt,
+      JSON.stringify(event.payload),
+    ]
+  );
+
+  if (inserted.rowCount === 0) {
+    console.log(`[analytics-worker] duplicate refund ignored ${event.idemKey}`);
+    recordJobProcessed('refund');
+    return;
+  }
+
+  await db.query(
+    `INSERT INTO event_sales_aggregates
+      (event_id, tickets_sold, gross_revenue, purchase_events, tickets_refunded, refunded_revenue, refund_events, updated_at)
+     VALUES ($1, 0, 0, 0, $2, $3, 1, NOW())
+     ON CONFLICT (event_id)
+     DO UPDATE SET
+       tickets_refunded = event_sales_aggregates.tickets_refunded + EXCLUDED.tickets_refunded,
+       refunded_revenue = event_sales_aggregates.refunded_revenue + EXCLUDED.refunded_revenue,
+       refund_events    = event_sales_aggregates.refund_events + 1,
+       updated_at       = NOW()`,
+    [event.eventId, event.seats, event.priceUsd]
+  );
+
+  console.log(`[analytics-worker] processed refund ${event.idemKey}`);
+  recordJobProcessed('refund');
 }
 
 // Main consumer loop: block on queue, process valid jobs, DLQ invalid ones.
