@@ -479,7 +479,7 @@ services:
       - team-net
     depends_on:
       ticket-purchase:
-        condition: service_healthy
+        condition: service_started
 
 # ── Named volumes ──────────────────────────────────────────────────────────────
 # Declare a volume for each database here, e.g.:
