@@ -129,10 +129,14 @@ services:
       - FRAUD_HIGH_PRICE_THRESHOLD=500
       - FRAUD_MAX_SEATS_THRESHOLD=6
       - FRAUD_CARD_ATTEMPT_LIMIT=4
+      - REFUND_URL=http://refund:3000
+      - REFUND_TIMEOUT_MS=5000
     depends_on:
       fraud-db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      refund:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
@@ -300,6 +304,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=event-catalog
       - DATABASE_URL=postgres://user:pass@events-db:5432/events-db
+      - WAITLIST_QUEUE_NAME=waitlist:queue
     depends_on:
       redis:
         condition: service_healthy
@@ -325,6 +330,8 @@ services:
       - DATABASE_URL=postgres://user:pass@users-db:5432/users-db
     depends_on:
       users-db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
@@ -365,7 +372,7 @@ services:
       - SERVICE_NAME=ticket-purchase
       - FRAUD_QUEUE_NAME=fraud:queue
       - ANALYTICS_QUEUE_NAME=analytics:queue
-      - WAITLIST_QUEUE_NAME=waitlist-jobs
+      - WAITLIST_QUEUE_NAME=waitlist:queue
       - NOTIFICATION_PUBSUB_NAME=notification:pubsub
       - EVENT_CATALOG_URL=http://event-catalog:3005
       - PAYMENT_URL=http://payment:3001
@@ -394,6 +401,13 @@ services:
       - SERVICE_NAME=waitlist-worker
       - QUEUE_NAME=waitlist:queue
       - DLQ_NAME=waitlist:dlq
+      - PAYMENT_URL=http://payment:3001
+      - TICKET_PURCHASE_URL=http://ticket-purchase:3000
+      - WORK_SIM_MIN_MS=200
+      - WORK_SIM_MAX_MS=700
+      - IDEM_TTL_SEC=86400
+      - MAX_RETRIES=3
+      - RETRY_BASE_MS=500
     depends_on:
       redis:
         condition: service_healthy
@@ -424,7 +438,9 @@ services:
       retries: 5
 
   refund: 
-    build: ./refund
+    build: 
+      context: ./refund
+      dockerfile: dockerfile
     container_name: refund
     restart: unless-stopped
     ports:
@@ -442,10 +458,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 5
+      start_period: 10s
 
   refund-db:
     image: postgres:16

@@ -1,8 +1,8 @@
-# Sprint 3 Report — [Team Name]
+# Sprint 3 Report — Super Good Ticketing System
 
 **Sprint:** 3 — Reliability and Poison Pills  
 **Tag:** `sprint-3`  
-**Submitted:** [date, before 04.28 class]
+**Submitted:** 4/28/26
 
 ---
 
@@ -17,18 +17,20 @@
 | Team Member | What They Delivered | Key Commits |
 | ----------- | ------------------- | ----------- |
 | Henry Branham      | added payment refund endpoint, takes in paymentID and amount setting status to refunded or partial_refund in db | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/48, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/61 |
+| James Rust      | added retry logic to fraud detection DLQ, added a call to refund service on suspicious activity, added caddy load balancing |https://github.com/RikShah04/Super_Good_Ticketing_System/pull/64, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/69, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/65 |
 | [Name]      | | |
+| Erika Lam      | refund flow (idempotent), verify purchase, payment refund endpoint, unreserve seats, DB storage, publish events | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/60 |
 | [Name]      | | |
-
+| Rikhav Shah      | set up waitlist functionality, added idempotency, added dlq | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/72 |
 ---
 
 ## What Is Working
 
-- [ ] Poison pill handling: malformed messages go to DLQ, worker keeps running
-- [ ] Worker `GET /health` shows non-zero `dlq_depth` after poison pills are injected
-- [ ] Worker status remains `healthy` while DLQ fills
-- [ ] System handles failure scenarios gracefully (no dangling state, no crash loops)
-- [ ] All services/workers required for team size are implemented
+- [x] Poison pill handling: malformed messages go to DLQ, worker keeps running
+- [x] Worker `GET /health` shows non-zero `dlq_depth` after poison pills are injected
+- [x] Worker status remains `healthy` while DLQ fills
+- [x] System handles failure scenarios gracefully (no dangling state, no crash loops)
+- [x] All services/workers required for team size are implemented
 
 ---
 
@@ -89,3 +91,5 @@ Worker health after injection:
 ---
 
 ## Blockers and Lessons Learned
+
+Like in other sprints, clearly communicating about which information is sent to which service/worker was an important lesson that we continue to learn. Additionally, finalizing the flow of jobs (what order different services/workers interact) was difficult and required more discussion than in previous sprints.

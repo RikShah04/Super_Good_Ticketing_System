@@ -2,12 +2,15 @@ import express from 'express';
 import redis from 'redis';
 import pg from 'pg';
 import validator from 'validator';
+import { randomUUID } from 'crypto';
 
 const app = express();
 const port = Number(process.env.PORT || '3005');
 const SERVICE_NAME = process.env.SERVICE_NAME || 'event-catalog';
 
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://user:pass@events-db:5432/events-db"
+const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist:queue';
+
 const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
@@ -24,7 +27,51 @@ client.on('error', err => {
 
 await client.connect();
 
+await pool.connect();
+
 app.use(express.json());
+
+// Middleware to retrieve simulated userId
+// Usage Idea: In load tests, we can use userIds from users-db to simulate repeated requests.
+// in load test, when fetching from events/:id, we include a header with the user id.
+// ex: await fetch(`http://localhost:3005/events/${event.id}`, {headers: { "x-user-id: user.id "}});
+app.use((req, _res, next) => {
+    const userId = req.header("x-user-id");
+
+    if (userId && validator.isUUID(userId)) {
+        req.user = { id: userId };
+    } else {
+        req.user = null;
+    }
+
+    next();
+});
+
+function publishEvent({
+    eventType,
+    eventId,
+    userId,
+    seats = null,
+    priceUsd = null,
+    extra = {}
+}) {
+    const eventPayload = {
+        idem_key: randomUUID(),
+        event_type: eventType,
+        source_service: SERVICE_NAME,
+        event_id: eventId,
+        user_id: userId || null,
+        seats: seats,
+        price_usd: priceUsd,
+        emitted_at: new Date().toISOString(),
+        payload: extra
+    };
+
+    client.lPush("analytics:queue", JSON.stringify(eventPayload))
+        .catch(err => {
+            console.error("Failed to enqueue analytics event: ", err.message);
+        });
+}
 
 app.get('/events', async (req, res) => {
     // Default page is 1
@@ -112,7 +159,22 @@ app.get('/events/:id', async (req, res) => {
         // Try Redis cache first
         const cached = await client.get(cacheKey);
         if (cached) {
-            return res.json(JSON.parse(cached));
+            const event = JSON.parse(cached);
+
+            res.json(event);
+            
+            publishEvent({
+                eventType: "event.viewed",
+                eventId: id,
+                userId: req.user?.id,
+                seats: event.availableseats,
+                priceUsd: event.priceusd,
+                extra: {
+                    source: "cache"
+                }
+            });
+
+            return;
         }
 
         // Not in the cache, to the DB it is!
@@ -128,6 +190,17 @@ app.get('/events/:id', async (req, res) => {
         await client.setEx(cacheKey, 60, JSON.stringify(event));
 
         res.json(event);
+        
+        publishEvent({
+            eventType: "event.viewed",
+            eventId: id,
+            userId: req.user?.id,
+            seats: event.availableseats,
+            priceUsd: event.priceusd,
+            extra: {
+                source: "events-db"
+            }
+        });
         
     } catch (err) {
         console.error("GET /events/:id failed: ", err);
@@ -227,9 +300,14 @@ app.post("/unreserve-seats", async (req, res) => {
             'UPDATE eventcatalog SET availableseats = availableseats + $1 WHERE id = $2',
             [seats, event_id]
         );
-
+        
         await db.query('COMMIT');
         await client.del(`event:${event_id}`);
+
+        for (let i = 0; i < seats; i++) {
+            await client.lPush(WAITLIST_QUEUE_NAME, JSON.stringify({ eventId: event_id, paymentInfo: null, idemKey: null }));
+        }   
+
         return res.status(200).json({
             message: 'Refund Successful!',
             seatCost: event.priceusd,

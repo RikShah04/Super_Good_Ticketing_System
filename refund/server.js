@@ -17,6 +17,7 @@ const TICKET_PURCHASE_URL = process.env.TICKET_PURCHASE_URL || "http://ticket-pu
 const ANALYTICS_QUEUE_NAME = process.env.ANALYTICS_QUEUE_NAME || 'analytics:queue';
 const SEAT_RELEASED_PUBSUB_NAME = process.env.SEAT_RELEASED_PUBSUB_NAME || "seat-released";
 const NOTIFICATION_PUBSUB_NAME = process.env.NOTIFICATION_PUBSUB_NAME || 'notification:pubsub';
+const TTL_MIN = process.env.TTL_MIN ? parseInt(process.env.TTL_MIN) : 10;
 
 
 const client = redis.createClient({ url: redisUrl });
@@ -85,11 +86,45 @@ app.post("/refund", async (req, res) => {
   const { purchaseId, seats, idemKey } = req.body;
 
   //verify input
-  if (!purchaseId || !Number.isInteger(seats) || seats <= 0){
+  if (!purchaseId || !Number.isInteger(seats) || seats <= 0 || !idemKey){
     return res.status(400).json({
-      message: "Proper purchaseID and seats are required"
+      message: "Proper purchaseID, seats, and idemKey are required"
     })
   }
+
+  // claim job for idempotency
+  const claimed = await client.set(refundIdemKey(idemKey), "1", {
+     NX: true, 
+     EX: TTL_MIN * 60
+  });
+
+  if (!claimed) {
+    const state = await client.hGet(refundDataKey(idemKey), "state");
+    const statusCode = await client.hGet(refundDataKey(idemKey), "status");
+    const responseStr = await client.hGet(refundDataKey(idemKey), "response");
+
+    const response = responseStr ? JSON.parse(responseStr) : {};
+    const status = statusCode ? parseInt(statusCode) : 409;
+
+    if (state === "processing") {
+      return res.status(409).json({
+        message: "Duplicate refund detected; request still processing",
+      });
+    }
+
+    return res.status(status).json({
+      ...response,
+      duplicate: true,
+      duplicateMessage: `Duplicate refund detected; previous request completed with status ${state}`,
+    });
+  }
+
+  await client.hSet(refundDataKey(idemKey), {
+    state: "processing",
+    status: "",
+    response: "",
+  });
+  await client.expire(refundDataKey(idemKey), TTL_MIN * 60);
 
   let refundId;
 
@@ -106,25 +141,36 @@ app.post("/refund", async (req, res) => {
 
     if(!verifyRes.ok){
       const verifyBody = await verifyRes.json().catch(() => ({}));
-      return res.status(verifyRes.status).json({
-        message: verifyBody.message || "Purchase verification failed"
-      })
+      const message = verifyBody.message || "Purchase verification failed";
+
+      await client.hSet(refundDataKey(idemKey), {
+        state: "failed",
+        status: String(verifyRes.status),
+        response: JSON.stringify({ message }),
+      });
+
+      return res.status(verifyRes.status).json({ message });
     }
 
-    const verifyData = await verifyRes.json();
-    const purchase = verifyData.purchase;
+    const purchase = await verifyRes.json();  
 
     //Get data from the verified purchase.
     // ticket_purchases.charge is the total original purchase cost
     const eventId = purchase.event_id;
     const paymentId = purchase.payment_id;
-    const originalSeats = purchase.seats;
+    const originalSeats = purchase.purchased_seats;
     const originalCharge = purchase.charge;
 
     if (!eventId || !paymentId || !originalSeats || !originalCharge) {
-      return res.status(500).json({
-        message: "Verified purchase missing event_id, payment_id, original seats, or original charge",
+      const message = "Verified purchase missing event_id, payment_id, original seats, or original charge";
+
+      await client.hSet(refundDataKey(idemKey), {
+        state: "failed",
+        status: "500",
+        response: JSON.stringify({ message }),
       });
+
+      return res.status(500).json({ message });
     }
 
     const refundAmount = (originalCharge / originalSeats) * seats;
@@ -169,6 +215,12 @@ app.post("/refund", async (req, res) => {
         [refundId, "failed", message]
       );
 
+      await client.hSet(refundDataKey(idemKey), {
+        state: "failed",
+        status: String(paymentRefundRes.status),
+        response: JSON.stringify({ message }),
+      });
+
       return res.status(paymentRefundRes.status).json({ message });
     }
 
@@ -197,22 +249,44 @@ app.post("/refund", async (req, res) => {
         [refundId, "failed", message]
       );
 
+      await client.hSet(refundDataKey(idemKey), {
+        state: "failed",
+        status: String(unreserveRes.status),
+        response: JSON.stringify({ message }),
+      });
+
       return res.status(unreserveRes.status).json({ message });
     }
 
-    // 8. TODO later:
-    // Tell ticket-purchase how many seats were successfully refunded.
-    // This is where the future ticket-purchase endpoint would be called.
-    //
-    // await fetch(`${TICKET_PURCHASE_URL}/refund-completed`, {
-    //   method: "POST",
-    //   headers: { "Content-Type": "application/json" },
-    //   body: JSON.stringify({
-    //     purchaseId,
-    //     refundId,
-    //     seats,
-    //   }),
-    // });
+    const ticketPurchaseRefundRes = await fetch(`${TICKET_PURCHASE_URL}/refund`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        purchaseId,
+      }),
+    });
+
+    if (!ticketPurchaseRefundRes.ok) {
+      const ticketPurchaseRefundBody = await ticketPurchaseRefundRes.json().catch(() => ({}));
+      const message = ticketPurchaseRefundBody.message || "Failed to update ticket-purchase refund";
+
+      await db.query(
+        `UPDATE refunds
+        SET status = $2, reason = $3
+        WHERE id = $1`,
+        [refundId, "failed", message]
+      );
+
+      await client.hSet(refundDataKey(idemKey), {
+        state: "failed",
+        status: String(ticketPurchaseRefundRes.status),
+        response: JSON.stringify({ message }),
+      });
+
+      return res.status(ticketPurchaseRefundRes.status).json({ message });
+    }
 
     //Push refund event to analytics queue.
     await client.lPush(
@@ -264,7 +338,7 @@ app.post("/refund", async (req, res) => {
       [refundId, "completed"]
     );
 
-    return res.status(200).json({
+    const successResponse = {
       message: "Refund successful",
       refundId,
       purchaseId,
@@ -272,7 +346,15 @@ app.post("/refund", async (req, res) => {
       paymentId,
       seats,
       amount: refundAmount,
+    };
+
+    await client.hSet(refundDataKey(idemKey), {
+      state: "success",
+      status: "200",
+      response: JSON.stringify(successResponse),
     });
+
+    return res.status(200).json(successResponse);
   } catch (err) {
     console.error("Refund endpoint error:", err.message);
 
@@ -285,13 +367,20 @@ app.post("/refund", async (req, res) => {
       );
     }
 
+    await client.hSet(refundDataKey(idemKey), {
+      state: "failed",
+      status: "500",
+      response: JSON.stringify({
+        message: "Internal refund service error",
+        error: err.message,
+      }),
+    });
+
     return res.status(500).json({
       message: "Internal refund service error",
       error: err.message,
     });
   }
-
-
 });
 
 
