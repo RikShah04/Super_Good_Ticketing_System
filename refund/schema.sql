@@ -2,10 +2,14 @@
 
 -- purchase_id should be unique for each 
 
-CREATE TABLE refunds (
-    purchase_id INT NOT NULL PRIMARY KEY,
-    refund_status VARCHAR(20) NOT NULL DEFAULT 'pending', 
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, 
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+CREATE TABLE IF NOT EXISTS refunds (
+  id SERIAL PRIMARY KEY,
+  purchase_id INTEGER NOT NULL,
+  event_id UUID NOT NULL,
+  payment_id TEXT NOT NULL,
+  seats INTEGER NOT NULL,
+  amount NUMERIC(10,2),
+  status TEXT NOT NULL,
+  refunded_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
 );
-

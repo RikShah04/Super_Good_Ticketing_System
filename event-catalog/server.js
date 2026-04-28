@@ -2,6 +2,7 @@ import express from 'express';
 import redis from 'redis';
 import pg from 'pg';
 import validator from 'validator';
+import { randomUUID } from 'crypto';
 
 const app = express();
 const port = Number(process.env.PORT || '3005');
@@ -24,7 +25,51 @@ client.on('error', err => {
 
 await client.connect();
 
+await pool.connect();
+
 app.use(express.json());
+
+// Middleware to retrieve simulated userId
+// Usage Idea: In load tests, we can use userIds from users-db to simulate repeated requests.
+// in load test, when fetching from events/:id, we include a header with the user id.
+// ex: await fetch(`http://localhost:3005/events/${event.id}`, {headers: { "x-user-id: user.id "}});
+app.use((req, _res, next) => {
+    const userId = req.header("x-user-id");
+
+    if (userId && validator.isUUID(userId)) {
+        req.user = { id: userId };
+    } else {
+        req.user = null;
+    }
+
+    next();
+});
+
+function publishEvent({
+    eventType,
+    eventId,
+    userId,
+    seats = null,
+    priceUsd = null,
+    extra = {}
+}) {
+    const eventPayload = {
+        idem_key: randomUUID(),
+        event_type: eventType,
+        source_service: SERVICE_NAME,
+        event_id: eventId,
+        user_id: userId || null,
+        seats: seats,
+        price_usd: priceUsd,
+        emitted_at: new Date().toISOString(),
+        payload: extra
+    };
+
+    client.lPush("analytics:queue", JSON.stringify(eventPayload))
+        .catch(err => {
+            console.error("Failed to enqueue analytics event: ", err.message);
+        });
+}
 
 app.get('/events', async (req, res) => {
     // Default page is 1
@@ -112,7 +157,22 @@ app.get('/events/:id', async (req, res) => {
         // Try Redis cache first
         const cached = await client.get(cacheKey);
         if (cached) {
-            return res.json(JSON.parse(cached));
+            const event = JSON.parse(cached);
+
+            res.json(event);
+            
+            publishEvent({
+                eventType: "event.viewed",
+                eventId: id,
+                userId: req.user?.id,
+                seats: event.availableseats,
+                priceUsd: event.priceusd,
+                extra: {
+                    source: "cache"
+                }
+            });
+
+            return;
         }
 
         // Not in the cache, to the DB it is!
@@ -128,6 +188,17 @@ app.get('/events/:id', async (req, res) => {
         await client.setEx(cacheKey, 60, JSON.stringify(event));
 
         res.json(event);
+        
+        publishEvent({
+            eventType: "event.viewed",
+            eventId: id,
+            userId: req.user?.id,
+            seats: event.availableseats,
+            priceUsd: event.priceusd,
+            extra: {
+                source: "events-db"
+            }
+        });
         
     } catch (err) {
         console.error("GET /events/:id failed: ", err);
@@ -175,9 +246,11 @@ app.post("/reserve-seats", async (req, res) => {
         );
 
         await db.query('COMMIT');
+        await client.del(`event:${event_id}`);
         return res.status(200).json({
             message: 'Purchase Successful!',
-            cost: event.priceusd,
+            seatCost: event.priceusd,
+            totalCost: event.priceusd * seats,
             seatsReserved: seats
         });
     } catch (err) {
@@ -188,6 +261,61 @@ app.post("/reserve-seats", async (req, res) => {
         db.release();
     }
 });
+
+app.post("/unreserve-seats", async (req, res) => {
+    const { event_id, seats } = req.body;
+
+    if (!event_id || !Number.isInteger(seats) || seats <= 0) {
+        return res.status(400).json({
+            message: 'Missing or invalid event_id or seats.'
+        });
+    }
+
+    const db = await pool.connect();
+    try {
+        await db.query('BEGIN');
+
+        const eventResult = await db.query(
+            'SELECT id, availableseats, priceusd, totalseats FROM eventcatalog WHERE id = $1 FOR UPDATE',
+            [event_id]
+        );
+
+        if (eventResult.rowCount === 0) {
+            await db.query('ROLLBACK');
+            return res.status(404).json({ message: 'Event not found.' });
+        }
+
+        const event = eventResult.rows[0];
+
+        if (event.availableseats + seats > event.totalseats) {
+            await db.query('ROLLBACK');
+            return res.status(400).json({
+                message: 'Cannot unreserve more seats than were originally reserved.'
+            });
+        }
+
+        await db.query(
+            'UPDATE eventcatalog SET availableseats = availableseats + $1 WHERE id = $2',
+            [seats, event_id]
+        );
+
+        await db.query('COMMIT');
+        await client.del(`event:${event_id}`);
+        return res.status(200).json({
+            message: 'Refund Successful!',
+            seatCost: event.priceusd,
+            totalRefund: event.priceusd * seats,
+            seatsUnreserved: seats
+        });
+    } catch (err) {
+        await db.query('ROLLBACK');
+        console.error('Failed to unreserve seats:', err.message);
+        return res.status(500).json({ message: 'Failed to unreserve seats.' });
+    } finally {
+        db.release();
+    }
+});
+
 
 app.get('/health', async (_req, res) => {
     let healthy = true;

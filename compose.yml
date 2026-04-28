@@ -310,6 +310,49 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  users:
+    build: ./users
+    container_name: users
+    restart: unless-stopped
+    ports:
+      - "3006:3006"
+    networks:
+      - team-net
+    environment:
+      - PORT=3006
+      - SERVICE_NAME=users
+      - DATABASE_URL=postgres://user:pass@users-db:5432/users-db
+    depends_on:
+      users-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  users-db:
+    image: postgres:16
+    container_name: users-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: users-db
+    volumes:
+      - ./users/db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - users-db-data:/var/lib/postgresql/data
+    networks:
+      - team-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d users-db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
       
   ticket-purchase:
     build: ./ticket-purchase
@@ -325,7 +368,7 @@ services:
       - SERVICE_NAME=ticket-purchase
       - FRAUD_QUEUE_NAME=fraud:queue
       - ANALYTICS_QUEUE_NAME=analytics:queue
-      - WAITLIST_QUEUE_NAME=waitlist:queue
+      - WAITLIST_QUEUE_NAME=waitlist-jobs
       - NOTIFICATION_PUBSUB_NAME=notification:pubsub
       - EVENT_CATALOG_URL=http://event-catalog:3005
       - PAYMENT_URL=http://payment:3001
@@ -404,7 +447,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -419,6 +462,7 @@ services:
       POSTGRES_DB: refund_db
     volumes:
       - refund-db-data:/var/lib/postgresql/data
+      - ./refund/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     networks:
       - team-net
     healthcheck:
@@ -440,3 +484,4 @@ volumes:
   ticket-purchase-db-data:
   refund-db-data:
   events-db-data:
+  users-db-data:
