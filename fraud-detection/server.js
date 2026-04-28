@@ -24,6 +24,9 @@ const FLAGGED_CHANNEL = process.env.FRAUD_FLAGGED_CHANNEL ?? 'fraud:flagged'
 const RESULT_CHANNEL = process.env.FRAUD_RESULT_CHANNEL ?? 'fraud:result'
 const RESULT_KEY_PREFIX = process.env.FRAUD_RESULT_KEY_PREFIX ?? 'fraud:result:'
 
+const REFUND_URL = process.env.REFUND_URL ?? 'http://refund:3000'
+const REFUND_TIMEOUT_MS = Number(process.env.REFUND_TIMEOUT_MS ?? 5000)
+
 const HIGH_PRICE_THRESHOLD = Number(process.env.FRAUD_HIGH_PRICE_THRESHOLD ?? 500)
 const MAX_SEATS_THRESHOLD = Number(process.env.FRAUD_MAX_SEATS_THRESHOLD ?? 6)
 const CARD_ATTEMPT_LIMIT = Number(process.env.FRAUD_CARD_ATTEMPT_LIMIT ?? 4)
@@ -155,6 +158,35 @@ async function determineFraud(job) {
   }
 
   return { flagged: false, reason: 'passed_basic_rules' }
+}
+
+async function callRefundService(job, decision) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), REFUND_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(`REFUND_URL}/refund`, {
+      method: 'POST',
+      headers: { 'Conetent-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        purchaseID: job.orderID,
+        seats: job.seats,
+        idemKey: `fraud-refund-${job.paymentID}`,
+        reason: decision.reason,
+      })
+    })
+
+    const body = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      throw new Error(`refund failed with status ${response.status}: ${body.message ?? 'unknown refund error'}`)
+    }
+
+    return body
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 async function processJob(job){
