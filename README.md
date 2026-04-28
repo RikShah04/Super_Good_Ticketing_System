@@ -11,13 +11,14 @@
 
 | Team Member | Files / Directories Owned This Sprint |
 | ----------- | ----------------------------------------------- |
-| Ian Mei, Ethan Pham | `ticket-purchase/`, `ticket-purchase/db/schema.sql`, `waitlist/` |
-| Jasper McCormack | `event-catalog/db/schema.sql`, `event-catalog/seedEvents.js` |
-| Henry Branham | `payment/`, `k6/` |
-| Rikhav Shah | `notification/` |
-| Erika Lam | `refund/`, `refund/db/schema.sql` |
-| James Rust | `fraud-detection/` |
-| Jonathan Zhang | `analytics/`, `analytics/db/schema.sql` |
+| Ian Mei | `ticket-purchase/`, `event-catalog`, `k6/` |
+| Ethan Pham | `ticket-purchase/`, `k6/` |
+| Jasper McCormack | `event-catalog/`, `users/` |
+| Henry Branham | `payment/` |
+| Rikhav Shah | `notification/`, `waitlist/`, `/k6` |
+| Erika Lam | `refund/`, `k6/` |
+| James Rust | `fraud-detection/`, `Caddyfile` |
+| Jonathan Zhang | `analytics/` |
 
 > Ownership is verified by `git log --author`. Each person must have meaningful commits in the directories they claim.
 
@@ -30,7 +31,7 @@
 docker compose up --build
 
 # Start with service replicas (Sprint 4)
-docker compose up --scale your-service=3
+docker compose up --scale ticket-purchase=3 event-catalog=3 payment=3
 
 # Verify all services are healthy
 docker compose ps
@@ -42,20 +43,20 @@ docker compose logs -f
 docker compose exec holmes bash
 ```
 
-### Base URLs (development)
+### Base URLs (development, all from holmes)
 
 ```
-fraud-worker   http://localhost:3000 (from holmes)
-ticket-purchase    http://ticket-purchase:3000 (from holmes)
-payment    http://payment:3000 (from holmes)
-refund    http://refund:3001 (from holmes)
-analytics    http://analytics:3000 (from holmes)
-notification   http://notification:3000 (from holmes)
-event-catalog   http://localhost:3005 (from holmes)
-waitlist    http://waitlist:3000 (from holmes)
-
-[worker-name]          http://localhost:[port]   (health endpoint only)
-holmes                 (no port — access via exec)
+event-catalog      http://event-catalog:3005        service
+ticket-purchase    http://ticket-purchase:3000      service
+payment            http://payment:3000              service
+refund             http://refund:3001               service
+users              http://users:3006                service
+waitlist           http://waitlist:3000             worker
+fraud-worker       http://fraud-worker:3000         worker
+analytics          http://analytics:3000            worker
+notification       http://notification:3000         worker
+redis              (no port)
+holmes             (no port, access via exec)
 ```
 
 > From inside holmes, services are reachable by name:
@@ -67,9 +68,11 @@ holmes                 (no port — access via exec)
 
 ## System Overview
 
-The Super Good Ticketing System is a microservice-based event ticketing platform where users can browse events, purchase tickets, and receive notifications. The system is composed of multiple services including ticket purchase, payment, notification, refund, analytics, and fraud detection.
+The Super Good Ticketing System is a microservice-based event ticketing platform where users can browse events, purchase tickets, and refund previous orders. The system is composed of multiple services and workers that all communicate over Redis or HTTP calls. Some services and workers also own their own database.
 
-Services communicate using a combination of synchronous HTTP calls and asynchronous messaging via Redis. For example, the ticket-purchase service processes a purchase request and pushes a job to a Redis queue for downstream processing.
+Upon purchasing a ticket, an order is logged in `ticket-purchase-db`. The event details are gathered from `event-catalog`, and if the event is out of seats, the order is pushed to `waitlist`. Otherwise, a payment is sent to `payment` for processing. The endpoint will retry payments 3 times before returning a failure to the request sender. On success, jobs are pushed to queues for `fraud-worker` and `analytics` to process, as well as a pub/sub channel that `notifications` listens on.
+
+Upon refunding a ticket, a refund is logged to `refund-db`. The original purchase details are gathered from `ticket-purchase` and the refund is sent to `payment` to fulfill. Upon success, `ticket-purchase` is queried again to update its own purchase data, and a message is pushed to `notifications`' and `waitlist`'s pub/sub channels for processing. `waitlist` will promote a waitlisted order to `ticket-purchase` to re-attempt a purchase when a seat is released by `refund`.
 
 ---
 
@@ -143,6 +146,164 @@ curl http://localhost:3000/health
   }
 }
 ```
+
+### POST /purchase
+
+```
+POST /purchase
+
+  Accepts order details and coordinates a purchase with the other services.
+
+  Responses:
+    200  Purchase completed successfully
+    400  Missing or invalid request body or data
+    404  Event not found
+    409  Not enough seats available for order
+    500  Unexpected server error
+```
+
+**Example request:**
+
+```bash
+curl \
+  -H 'Content-type: application/json' \
+  -d '{
+    "eventId": "1654b713-a1d7-479d-85a9-4ecaddbdba9c",
+    "seats": 2,
+    "idemKey": "idem-1",
+    "paymentInfo": {
+      "cc": "1111111111111111",
+      "cvv": "111",
+      "expiry": "11/11",
+      "cardType": "Visa"
+    }
+  }' http://localhost:3000/purchase
+```
+
+**Example response (200):**
+
+```json
+{
+  "message": "Purchase successful",
+  "purchaseId": 1
+}
+```
+
+**Example response (400):**
+
+```json
+{
+  "message": "Invalid payment data"
+}
+```
+
+**Example response (404):**
+
+```json
+{
+  "message": "Event not found"
+}
+```
+
+### POST /verify
+
+```
+POST /verify
+
+  For the refund service. Validates a provided purchaseId and seats.
+
+  Responses:
+    200  ID validated successfully
+    400  Not enough refundable seats available for refund
+    404  Purchase not found
+    500  Unexpected server error
+```
+
+**Example request:**
+
+```bash
+curl \
+  -H 'Content-type: application/json' \
+  -d '{
+    "purchaseId": 1,
+    "seats": 1
+  }' http://localhost:3000/verify
+```
+
+**Example response (200):**
+
+```json
+{
+  "id": 1,
+  "event_id": "1654b713-a1d7-479d-85a9-4ecaddbdba9c",
+  "payment_id": "3634242b-7835-4106-9598-3637f95b81f6",
+  "purchased_seats": 2,
+  "refundable_seats": 2,
+  "charge": "100.00",
+  "status": "success",
+  "reason": null,
+  "created_at": "2026-04-28T...",
+  "updated_at": "2026-04-28T...",
+  "seats": 1
+}
+```
+
+**Example response (400):**
+
+```json
+{
+  "message": "Not enough seats available"
+}
+```
+
+**Example response (404):**
+
+```json
+{
+  "message": "Purchase not found"
+}
+```
+
+### POST /refund
+
+```
+POST /refund
+
+  For the refund service. Confirms a previously validated refund.
+
+  Responses:
+    200  Refund processed successfully
+    400  Refund request expired or invalid
+    500  Unexpected server error
+```
+
+**Example request:**
+
+```bash
+curl \
+  -H 'Content-type: application/json' \
+  -d '{
+    "purchaseId": 1
+  }' http://localhost:3000/refund
+```
+
+**Example response (200):**
+
+```json
+{
+  "message": "Refund successful",
+  "refundedSeats": 1
+}
+```
+
+**Example response (400):**
+
+```json
+{
+  "message": "Refund request expired or invalid"
+}
+```
+
 
 ---
 
