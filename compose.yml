@@ -368,7 +368,7 @@ services:
       - SERVICE_NAME=ticket-purchase
       - FRAUD_QUEUE_NAME=fraud:queue
       - ANALYTICS_QUEUE_NAME=analytics:queue
-      - WAITLIST_QUEUE_NAME=waitlist-jobs
+      - WAITLIST_QUEUE_NAME=waitlist:queue
       - NOTIFICATION_PUBSUB_NAME=notification:pubsub
       - EVENT_CATALOG_URL=http://event-catalog:3005
       - PAYMENT_URL=http://payment:3001
