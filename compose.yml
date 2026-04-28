@@ -170,7 +170,8 @@ services:
       - SERVICE_NAME=analytics-worker
       - DATABASE_URL=postgres://analytics:analytics@analytics-db:5432/analytics_db
       - REDIS_URL=redis://redis:6379
-      - QUEUE_NAME=analytics:queue
+      - PURCHASE_QUEUE_NAME=analytics:purchase:queue
+      - BROWSE_QUEUE_NAME=analytics:browse:queue
       - DLQ_NAME=analytics:dlq
     depends_on:
       analytics-db:
@@ -300,6 +301,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=event-catalog
       - DATABASE_URL=postgres://user:pass@events-db:5432/events-db
+      - ANALYTICS_BQUEUE_NAME=analytics:browse:queue
     depends_on:
       redis:
         condition: service_healthy
@@ -367,7 +369,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=ticket-purchase
       - FRAUD_QUEUE_NAME=fraud:queue
-      - ANALYTICS_QUEUE_NAME=analytics:queue
+      - ANALYTICS_PQUEUE_NAME=analytics:purchase:queue
       - WAITLIST_QUEUE_NAME=waitlist-jobs
       - NOTIFICATION_PUBSUB_NAME=notification:pubsub
       - EVENT_CATALOG_URL=http://event-catalog:3005
@@ -439,6 +441,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - SERVICE_NAME=refund
       - DATABASE_URL=postgres://user:pass@refund-db:5432/refund_db
+      - ANALYTICS_RQUEUE_NAME=analytics:refund:queue
     depends_on:
       refund-db:
         condition: service_healthy

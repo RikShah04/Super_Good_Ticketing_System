@@ -13,7 +13,8 @@ const workerRedis = createClient({ url: process.env.REDIS_URL });
 await workerRedis.connect();
 const db = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const QUEUE_NAME = process.env.QUEUE_NAME ?? 'analytics:queue';
+const PURCHASE_QUEUE_NAME = process.env.PURCHASE_QUEUE_NAME ?? 'analytics:purchase:queue';
+const BROWSE_QUEUE_NAME = process.env.BROWSE_QUEUE_NAME ?? 'analytics:browse:queue';
 const DLQ_NAME = process.env.DLQ_NAME ?? `analytics:dlq`;
 const ALLOWED_TYPES = new Set(['purchase']);
 
@@ -130,7 +131,7 @@ async function processPurchaseEvent(event) {
 // Main consumer loop: block on queue, process valid jobs, DLQ invalid ones.
 async function mainAnalyticsLoop() {
   while (true) {
-    const result = await workerRedis.brPop(QUEUE_NAME, 0);
+    const result = await workerRedis.brPop(PURCHASE_QUEUE_NAME, 0);
     if (!result?.element) continue;
 
     try {
@@ -178,7 +179,7 @@ app.get('/health', async (req, res) => {
 
   // Check queue depth — flag if backlog is growing
   try {
-    const depth = await redis.lLen(QUEUE_NAME);
+    const depth = await redis.lLen(PURCHASE_QUEUE_NAME);
     const dlqDepth = await redis.lLen(DLQ_NAME);
     checks.queue = {
       status: depth < 1000 && dlqDepth === 0 ? 'healthy' : 'degraded',

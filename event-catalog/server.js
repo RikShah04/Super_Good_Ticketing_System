@@ -10,6 +10,7 @@ const SERVICE_NAME = process.env.SERVICE_NAME || 'event-catalog';
 
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://user:pass@events-db:5432/events-db"
 const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
+const ANALYTICS_BQUEUE_NAME = process.env.ANALYTICS_BQUEUE_NAME || 'analytics:browse:queue';
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
@@ -65,7 +66,7 @@ function publishEvent({
         payload: extra
     };
 
-    client.lPush("analytics:queue", JSON.stringify(eventPayload))
+    client.lPush(ANALYTICS_BQUEUE_NAME, JSON.stringify(eventPayload))
         .catch(err => {
             console.error("Failed to enqueue analytics event: ", err.message);
         });

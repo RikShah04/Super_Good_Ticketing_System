@@ -14,7 +14,7 @@ const EVENT_CATALOG_URL = process.env.EVENT_CATALOG_URL || 'http://event-catalog
 const PAYMENT_URL = process.env.PAYMENT_URL || 'http://payment:3001';
 const TICKET_PURCHASE_URL = process.env.TICKET_PURCHASE_URL || "http://ticket-purchase:3000";
 
-const ANALYTICS_QUEUE_NAME = process.env.ANALYTICS_QUEUE_NAME || 'analytics:queue';
+const ANALYTICS_RQUEUE_NAME = process.env.ANALYTICS_RQUEUE_NAME || 'analytics:refund:queue';
 const SEAT_RELEASED_PUBSUB_NAME = process.env.SEAT_RELEASED_PUBSUB_NAME || "seat-released";
 const NOTIFICATION_PUBSUB_NAME = process.env.NOTIFICATION_PUBSUB_NAME || 'notification:pubsub';
 const TTL_MIN = process.env.TTL_MIN ? parseInt(process.env.TTL_MIN) : 10;
@@ -275,7 +275,7 @@ app.post("/refund", async (req, res) => {
 
     //Push refund event to analytics queue.
     await client.lPush(
-      ANALYTICS_QUEUE_NAME,
+      ANALYTICS_RQUEUE_NAME,
       JSON.stringify({
         type: "refund",
         refundId,
