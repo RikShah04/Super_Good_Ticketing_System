@@ -1,6 +1,7 @@
 import express from 'express';
 import redis from 'redis';
 import pg from 'pg';
+import validator from 'validator';
 
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
@@ -19,6 +20,13 @@ const TTL_MIN = process.env.TTL_MIN ? parseInt(process.env.TTL_MIN) : 10;
 
 const app = express();
 app.use(express.json());
+
+// Getting userId for push to analytics
+app.use((req, _res, next) => {
+  const userId = req.header('x-user-id');
+  req.user = (userId && validator.isUUID(userId)) ? { id: userId } : null;
+  next();
+});
 
 const client = redis.createClient({ url: REDIS_URL });
 client.on('error', (err) => {
@@ -223,6 +231,7 @@ app.post('/purchase', async (req, res) => {
           eventId,
           orderId: id,
           paymentId: paymentData.paymentID,
+          userId: req.user?.id ?? null,
           seats,
           refundableSeats: seats,
           priceUsd: price,

@@ -55,15 +55,15 @@ function publishEvent({
     extra = {}
 }) {
     const eventPayload = {
-        idem_key: randomUUID(),
-        event_type: eventType,
-        source_service: SERVICE_NAME,
-        event_id: eventId,
-        user_id: userId || null,
-        seats: seats,
-        price_usd: priceUsd,
-        emitted_at: new Date().toISOString(),
-        payload: extra
+        idemKey: randomUUID(),
+        eventType,
+        sourceService: SERVICE_NAME,
+        eventId,
+        userId: userId || null,
+        seats,
+        priceUsd,
+        emittedAt: new Date().toISOString(),
+        payload: extra,
     };
 
     client.lPush(ANALYTICS_BQUEUE_NAME, JSON.stringify(eventPayload))
