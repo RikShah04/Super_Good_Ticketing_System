@@ -331,7 +331,8 @@ app.post('/verify', async (req, res) => {
   // if too much time has passed, the refund will cancel
   await client.set(`ticket-purchase-refund:${purchaseId}`, seats, { EX: TTL_MIN * 60 });
 
-  res.status(200).json({ ...purchase });
+  const purchasePayload = { ...purchase, seats: purchase.purchased_seats };
+  res.status(200).json({ ...purchasePayload, purchase: purchasePayload });
 });
 
 app.post('/refund', async (req, res) => {

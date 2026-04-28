@@ -161,7 +161,7 @@ app.post("/refund", async (req, res) => {
     }
 
     const verifyData = await verifyRes.json();
-    const purchase = verifyData.purchase;
+    const purchase = verifyData.purchase ?? verifyData;
 
     //Get data from the verified purchase.
     // ticket_purchases.charge is the total original purchase cost
@@ -285,6 +285,7 @@ app.post("/refund", async (req, res) => {
     const analyticsPayload = {
       idemKey: String(refundId),
       eventType: "refund",
+      sourceService: SERVICE_NAME,
       eventId,
       userId: req.user?.id ?? null,
       seats,
