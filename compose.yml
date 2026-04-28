@@ -129,10 +129,14 @@ services:
       - FRAUD_HIGH_PRICE_THRESHOLD=500
       - FRAUD_MAX_SEATS_THRESHOLD=6
       - FRAUD_CARD_ATTEMPT_LIMIT=4
+      - REFUND_URL=http://refund:3000
+      - REFUND_TIMEOUT_MS=5000
     depends_on:
       fraud-db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      refund:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
