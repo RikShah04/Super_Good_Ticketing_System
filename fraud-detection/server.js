@@ -206,8 +206,34 @@ async function processJob(job){
   )
   
   const decision = await determineFraud(job)
+
+  let refundResult = null
+
+  if (decision.flagged) {
+    console.log(
+      '[fraud-worker] suspicious activity detected, calling refund service',
+      JSON.stringify({
+        paymentID: job.paymentID,
+        orderID: job.orderID,
+        reason: decision.reason,
+      })
+    )
+
+    refundResult = await callRefundService(job, decision)
+
+    console.log(
+      '[fraud-worker] refund service completed',
+      JSON.stringify(refundResult)
+    )
+  }
+
   await saveFraudResult(job, decision)
-  const published = await publishFraudResult(job, decision)
+
+  const published = await publishFraudResult(job, {
+    ...decision,
+    refundResult,
+  })
+  
   console.log(
     '[fraud-worker] completed fraud-check',
     JSON.stringify(published)
