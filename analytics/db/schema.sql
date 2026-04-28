@@ -15,6 +15,15 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 CREATE INDEX IF NOT EXISTS idx_analytics_events_idem_key
 	ON analytics_events (idem_key);
 
+ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS user_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_analytics_events_user_id ON analytics_events (user_id);
+
+CREATE TABLE IF NOT EXISTS event_view_aggregates (
+	event_id        TEXT PRIMARY KEY,
+	view_count      BIGINT NOT NULL DEFAULT 0,
+	last_viewed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS event_sales_aggregates (
 	event_id         TEXT PRIMARY KEY,
 	tickets_sold     BIGINT NOT NULL DEFAULT 0,
@@ -22,3 +31,8 @@ CREATE TABLE IF NOT EXISTS event_sales_aggregates (
 	purchase_events  BIGINT NOT NULL DEFAULT 0,
 	updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE event_sales_aggregates
+	ADD COLUMN IF NOT EXISTS tickets_refunded BIGINT         NOT NULL DEFAULT 0,
+	ADD COLUMN IF NOT EXISTS refunded_revenue NUMERIC(14, 2) NOT NULL DEFAULT 0,
+	ADD COLUMN IF NOT EXISTS refund_events    BIGINT         NOT NULL DEFAULT 0;
