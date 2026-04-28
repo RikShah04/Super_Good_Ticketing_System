@@ -21,7 +21,6 @@
 | Ethan Pham      | added ticket-purchase /verify and /refund endpoints, waitlist queueing | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/56 |
 | Jonathan Zhang      | add userId, handle browse events, handle refund events, change analytics to 3 loop async architecture | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/71 |
 | Erika Lam      | refund flow (idempotent), verify purchase, payment refund endpoint, unreserve seats, DB storage, publish events | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/60 |
-| [Name]      | | |
 | Rikhav Shah      | set up waitlist functionality, added idempotency, added dlq | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/72 |
 | Ian Mei      | Added an unreserve endpoint to event-catalog, did poison pill k6 testing| https://github.com/RikShah04/Super_Good_Ticketing_System/pull/50, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/73|
 | Jasper McCormack  | Added users service with endpoints, added publishing so that event-catalog GET /events/:id sends data to analytics  | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/58, https://github.com/RikShah04/Super_Good_Ticketing_System/pull/59  |
