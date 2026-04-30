@@ -161,7 +161,7 @@ app.post("/refund", async (req, res) => {
     }
 
     const verifyData = await verifyRes.json();
-    const purchase = verifyData.purchase ?? verifyData;
+    const purchase = verifyData;
 
     //Get data from the verified purchase.
     // ticket_purchases.charge is the total original purchase cost
