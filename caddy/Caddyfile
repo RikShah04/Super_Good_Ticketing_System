@@ -21,7 +21,7 @@
 
   handle_path /events* {
     reverse_proxy {
-      dynamic a event-catalog 3000 {
+      dynamic a event-catalog 3005 {
         refresh 5s
         resolvers 127.0.0.11
       }
