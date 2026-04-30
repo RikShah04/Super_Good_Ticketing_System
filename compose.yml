@@ -365,7 +365,7 @@ services:
     build: ./ticket-purchase
     restart: unless-stopped
     expose:
-      - "3000"
+      - "80"
     networks:
       - team-net
     environment:
