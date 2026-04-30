@@ -365,7 +365,7 @@ services:
     build: ./ticket-purchase
     restart: unless-stopped
     expose:
-      - "80"
+      - "3000"
     networks:
       - team-net
     environment:
@@ -490,7 +490,7 @@ services:
   caddy:
     image: caddy:2-alpine
     ports:
-     - "80:80"
+     - "3000:80"
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
     networks:
