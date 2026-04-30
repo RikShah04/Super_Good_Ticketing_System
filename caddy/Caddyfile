@@ -1,5 +1,5 @@
 :80 {
-  handle_path /purchase {
+  handle_path /purchase* {
     reverse_proxy {
       dynamic a ticket-purchase 3000 {
         refresh 5s
@@ -9,9 +9,9 @@
     }
   }
 
-  handle_path /payments* {
+  handle_path /payment* {
     reverse_proxy {
-      dynamic a payment 3000 {
+      dynamic a payment 3001 {
         refresh 5s
         resolvers 127.0.0.11
       }
