@@ -1,14 +1,5 @@
-:3000 {
-  reverse_proxy {
-    to :3000
+:80 {
+  reverse_proxy ticket-purchase:8000 {
     lb_policy round_robin
-    dynamic a {
-      name ticket-purchase
-      port 3000
-      resolvers 127.0.0.11
-      refresh 5s
-      dial_timeout 2s
-      dial_fallback_delay 300ms
-    }
   }
 }
