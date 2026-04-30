@@ -52,10 +52,9 @@ services:
 
   payment:
     build: ./payment
-    container_name: payment
     restart: unless-stopped
-    ports:
-      - "3003:3001"          # expose on host for local testing
+    expose:
+      - "3000"               # expose on host for local testing
     networks:
       - team-net             # REQUIRED — makes it reachable from holmes
     environment:
