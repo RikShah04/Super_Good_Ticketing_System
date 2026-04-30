@@ -1,5 +1,5 @@
 :80 {
-  reverse_proxy ticket-purchase:8000 {
+  reverse_proxy ticket-purchase:3000 {
     lb_policy round_robin
   }
 }
