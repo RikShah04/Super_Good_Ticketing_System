@@ -294,7 +294,6 @@ services:
 
   event-catalog:
     build: ./event-catalog
-    container_name: event-catalog
     restart: unless-stopped
     ports:
       - "3005:3005"
