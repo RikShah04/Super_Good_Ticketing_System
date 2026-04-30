@@ -137,16 +137,15 @@ function validateEvent(job) {
 }
 
 async function processBrowseEvent(event) {
+  // Idempotent insert — gates aggregate updates; DO NOTHING on conflict means duplicates exit early
   const inserted = await db.query(
-    `INSERT INTO analytics_events
-      (idem_key, event_type, source_service, event_id, order_id, payment_id, user_id, seats, price_usd, emitted_at, payload)
-     VALUES
-      ($1, $2, $3, $4, NULL, NULL, $5, $6, $7, $8, $9::jsonb)
+    `INSERT INTO browse_events
+      (idem_key, source_service, event_id, user_id, seats, price_usd, emitted_at, payload)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
      ON CONFLICT (idem_key) DO NOTHING
      RETURNING idem_key`,
     [
       event.idemKey,
-      event.eventType,
       event.sourceService,
       event.eventId,
       event.userId,
@@ -163,6 +162,7 @@ async function processBrowseEvent(event) {
     return;
   }
 
+  // Increment total view count and timestamp of most recent view
   await db.query(
     `INSERT INTO event_view_aggregates (event_id, view_count, last_viewed_at)
      VALUES ($1, 1, NOW())
@@ -173,21 +173,29 @@ async function processBrowseEvent(event) {
     [event.eventId]
   );
 
+  // Increment view count for the event's hour bucket to track peak browse times
+  await db.query(
+    `INSERT INTO event_browse_hourly (event_id, hour_bucket, view_count)
+     VALUES ($1, date_trunc('hour', $2::timestamptz), 1)
+     ON CONFLICT (event_id, hour_bucket)
+     DO UPDATE SET view_count = event_browse_hourly.view_count + 1`,
+    [event.eventId, event.emittedAt]
+  );
+
   console.log(`[analytics-worker] processed browse ${event.idemKey}`);
   recordJobProcessed('browse');
 }
 
 async function processPurchaseEvent(event) {
+  // Idempotent insert — gates aggregate updates; DO NOTHING on conflict means duplicates exit early
   const inserted = await db.query(
-    `INSERT INTO analytics_events
-      (idem_key, event_type, source_service, event_id, order_id, payment_id, user_id, seats, price_usd, emitted_at, payload)
-     VALUES
-      ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
+    `INSERT INTO purchase_events
+      (idem_key, source_service, event_id, order_id, payment_id, user_id, seats, price_usd, emitted_at, payload)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
      ON CONFLICT (idem_key) DO NOTHING
      RETURNING idem_key`,
     [
       event.idemKey,
-      event.eventType,
       event.sourceService,
       event.eventId,
       event.orderId,
@@ -206,6 +214,7 @@ async function processPurchaseEvent(event) {
     return;
   }
 
+  // Accumulate tickets sold and gross revenue per event
   await db.query(
     `INSERT INTO event_sales_aggregates (event_id, tickets_sold, gross_revenue, purchase_events, updated_at)
      VALUES ($1, $2, $3, 1, NOW())
@@ -223,16 +232,15 @@ async function processPurchaseEvent(event) {
 }
 
 async function processRefundEvent(event) {
+  // Idempotent insert — gates aggregate updates; DO NOTHING on conflict means duplicates exit early
   const inserted = await db.query(
-    `INSERT INTO analytics_events
-      (idem_key, event_type, source_service, event_id, order_id, payment_id, user_id, seats, price_usd, emitted_at, payload)
-     VALUES
-      ($1, $2, $3, $4, NULL, $5, $6, $7, $8, $9, $10::jsonb)
+    `INSERT INTO refund_events
+      (idem_key, source_service, event_id, payment_id, user_id, seats, price_usd, emitted_at, payload)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
      ON CONFLICT (idem_key) DO NOTHING
      RETURNING idem_key`,
     [
       event.idemKey,
-      event.eventType,
       event.sourceService,
       event.eventId,
       event.paymentId,
@@ -250,6 +258,7 @@ async function processRefundEvent(event) {
     return;
   }
 
+  // Accumulate refunded tickets and revenue per event; ORDER BY tickets_refunded DESC gives most-refunded ranking
   await db.query(
     `INSERT INTO event_sales_aggregates
       (event_id, tickets_sold, gross_revenue, purchase_events, tickets_refunded, refunded_revenue, refund_events, updated_at)
@@ -267,7 +276,7 @@ async function processRefundEvent(event) {
   recordJobProcessed('refund');
 }
 
-async function handle(raw, kind) {
+async function sharedLoopHandler(raw, kind) {
   try {
     const event = validateEvent(JSON.parse(raw));
     if (event.kind !== kind) throw new Error(`eventType ${event.eventType} arrived on ${kind} queue`);
@@ -285,7 +294,7 @@ async function purchaseLoop() {
   while (true) {
     const r = await purchaseWorkerRedis.brPop(PURCHASE_QUEUE_NAME, 0);
     if (!r?.element) continue;
-    await handle(r.element, 'purchase');
+    await sharedLoopHandler(r.element, 'purchase');
   }
 }
 
@@ -293,7 +302,7 @@ async function browseLoop() {
   while (true) {
     const r = await browseWorkerRedis.brPop(BROWSE_QUEUE_NAME, 0);
     if (!r?.element) continue;
-    await handle(r.element, 'browse');
+    await sharedLoopHandler(r.element, 'browse');
   }
 }
 
@@ -301,7 +310,7 @@ async function refundLoop() {
   while (true) {
     const r = await refundWorkerRedis.brPop(REFUND_QUEUE_NAME, 0);
     if (!r?.element) continue;
-    await handle(r.element, 'refund');
+    await sharedLoopHandler(r.element, 'refund');
   }
 }
 
