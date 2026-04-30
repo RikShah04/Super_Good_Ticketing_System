@@ -589,7 +589,7 @@ GET /health
 **Example request:**
 
 ```bash
-docker compose exec holmes curl http://payment:3000/health
+docker compose exec holmes curl http://payment:3001/health
 ```
 
 **Example response (200):**
@@ -623,6 +623,132 @@ docker compose exec holmes curl http://payment:3000/health
     "error": "connection refused"
     }
   }
+}
+```
+
+### POST /process
+
+```
+POST /process
+
+   Processes payment by validating input, simulating work, and storing payment token in database
+
+  Example Payload:
+  {
+    "cc": "3790123453827313",
+    "cvv": "123",
+    "expiry": "10/27",
+    "cardType": "Visa",
+    "price": 100.00
+  }
+
+  Responses:
+    200  Payment processed successfully
+    400  Input validation failed (invalid cc, cvv, expiry, card type, etc.)
+    500  Server error occured trying to process payment
+```
+
+**Example request:**
+
+```bash
+docker compose exec holmes
+```
+
+```bash
+curl -X POST http://payment:3001/process
+-H "Content-Type: application/json"
+-d '{"cc":"3790123453827313","cvv":"123","expiry":"10/27","cardType":"Visa","price":100.00}'
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "success",
+  "paymentID": "3f8a7c2e-91d4-4b6f-a9c1-5e2d7f8a1b3c",
+  "paymentToken": "tok_HSDK4398fDHSDDUSHF48934DKHS",
+  "timestamp": "2026-04-14T04:27:03.050Z",
+}
+```
+
+**Example response (400):**
+
+```json
+{
+  "status": "failure",
+  "error": "Invalid CC",
+  "timestamp": "2026-04-14T04:27:03.050Z",
+}
+```
+
+**Example response (500):**
+
+```json
+{
+  "status": "failure",
+  "error": "A server error occured when attempting to process payment",
+  "timestamp": "2026-04-14T04:27:03.050Z",
+}
+```
+
+### POST /refund
+
+```
+POST /refund
+
+   Processes payment refund by updating database to reflect refund amount and handles partial/full refunds
+
+  Example Payload:
+  {
+    "paymentID": "3f8a7c2e-91d4-4b6f-a9c1-5e2d7f8a1b3c",
+    "price": 100.00
+  }
+
+  Responses:
+    200  Payment refunded successfully (partially or full)
+    400  Input validation failed (invalid payment ID, refund amount is greater than original payment, etc.)
+    500  Server error occured trying to process payment
+```
+
+**Example request:**
+
+```bash
+docker compose exec holmes
+```
+
+```bash
+curl -X POST http://payment:3001/refund
+-H "Content-Type: application/json"
+-d '{"paymentID":"3f8a7c2e-91d4-4b6f-a9c1-5e2d7f8a1b3c","amount":50.00}'
+```
+
+**Example response (200):**
+
+```json
+{
+  "status": "partial_refund",
+  "paymentID": "3f8a7c2e-91d4-4b6f-a9c1-5e2d7f8a1b3c",
+  "timestamp": "2026-04-14T04:27:03.050Z",
+}
+```
+
+**Example response (400):**
+
+```json
+{
+  "status": "failure",
+  "error": "Payment ID Not Found",
+  "timestamp": "2026-04-14T04:27:03.050Z",
+}
+```
+
+**Example response (500):**
+
+```json
+{
+  "status": "failure",
+  "error": "A server error occured when attempting to process payment",
+  "timestamp": "2026-04-14T04:27:03.050Z",
 }
 ```
 
