@@ -488,13 +488,11 @@ services:
       start_period: 10s
   
   caddy:
-    image: caddy:2
-    container_name: caddy
-    restart: unless-stopped
+    image: caddy:2-alpine
     ports:
-     - "3000:3000"
+     - "3000:80"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
     networks:
       - team-net
     depends_on:
