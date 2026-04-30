@@ -54,14 +54,18 @@ After startup:
 
 ### Test 1: Scaling Comparison (`k6/sprint-4-scale.js`)
 
-| Metric | 1 replica | 3 replicas | Change |
-| ------ | --------- | ---------- | ------ |
-| p50    | | | |
-| p95    | | | |
-| p99    | | | |
-| RPS    | | | |
+| Metric | 1 replica   | 3 replicas  | Change      |
+| ------ | ----------- | ----------- | ----------- |
+| p50    | 2.60 ms     | 2.18 ms     | -0.42 ms    |
+| p95    | 4.73 ms     | 3.73 ms     | -1.00 ms    |
+| p99    | 7.05 ms     | 5.13 ms     | -2.92 ms    |
+| RPS    | 52.22 req/s | 52.10 req/s | -0.12 req/s |
 
 [Explain the improvement. Which replica count started to show diminishing returns?]
+
+The test shows a noticable improvement at higher p-levels. We were able to improve response times by distributing the load across three replicas rather than one, such that requests do not have to wait as long to get a response back.
+
+The requests-per-second metric stayed constant, showing that though response times improved, overall throughput remained steady. (This may be due to the endpoint that we are using to test. If we used an endpoint that requires more computation, like `ticket-purchase`'s /purchase or `refund`'s /refund, 1 replica may see fewer requests per second.)
 
 ### Test 2: Replica Failure (`k6/sprint-4-replica.js`)
 
