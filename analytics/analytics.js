@@ -386,6 +386,47 @@ app.get('/health', async (req, res) => {
   });
 })
 
+// Most viewed events ranked by total view count (internal holmes endpoint)
+app.get('/most-viewed', async (req, res) => {
+  const limit = Math.max(1, parseInt(req.query.limit) || 3);
+  const { rows } = await db.query(
+    `SELECT event_id, view_count, last_viewed_at
+     FROM event_view_aggregates
+     ORDER BY view_count DESC
+     LIMIT $1`,
+    [limit]
+  );
+  res.json(rows);
+});
+
+// Most refunded events ranked by tickets refunded (internal holmes endpoint)
+app.get('/most-refunded', async (req, res) => {
+  const limit = Math.max(1, parseInt(req.query.limit) || 3);
+  const { rows } = await db.query(
+    `SELECT event_id, tickets_refunded, refunded_revenue, refund_events
+     FROM event_sales_aggregates
+     WHERE tickets_refunded > 0
+     ORDER BY tickets_refunded DESC
+     LIMIT $1`,
+    [limit]
+  );
+  res.json(rows);
+});
+
+// Peak browse hours for a specific event (internal holmes endpoint)
+app.get('/peak-browse-times/:eventId', async (req, res) => {
+  const limit = Math.max(1, parseInt(req.query.limit) || 3);
+  const { rows } = await db.query(
+    `SELECT hour_bucket, view_count
+     FROM event_browse_hourly
+     WHERE event_id = $1
+     ORDER BY view_count DESC
+     LIMIT $2`,
+    [req.params.eventId, limit]
+  );
+  res.json(rows);
+});
+
 await ensureSchema();
 
 app.listen(process.env.PORT ?? 3000, () => {
