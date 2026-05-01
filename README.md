@@ -305,80 +305,6 @@ curl \
 ```
 
 
----
-
-### Analytics Worker (analytics)
-
-### GET /health
-
-```
-GET /health
-
-  Returns analytics worker health and dependency checks.
-  Checks Postgres and Redis as required checks.
-  Also reports queue depth and worker activity as degraded/healthy signals.
-
-  Responses:
-    200  Required dependencies are healthy
-    503  One or more required dependencies are unreachable
-```
-
-**Example request:**
-
-```bash
-# from inside holmes or another service container
-curl -s http://analytics:3000/health | jq .
-```
-
-**Example response (200):**
-
-```json
-{
-  "status": "healthy",
-  "service": "analytics-worker",
-  "timestamp": "2026-04-14T20:00:00.000Z",
-  "uptime_seconds": 123,
-  "checks": {
-    "database": { "status": "healthy", "latency_ms": 4 },
-    "redis": { "status": "healthy", "latency_ms": 2 },
-    "queue": { "status": "healthy", "depth": 0, "dlq_depth": 0 },
-    "worker": {
-      "status": "healthy",
-      "last_job_at": "never",
-      "jobs_processed": 0,
-      "seconds_since_last_job": null
-    }
-  }
-}
-```
-
-**Example response (503):**
-
-```json
-{
-  "status": "unhealthy",
-  "service": "analytics-worker",
-  "timestamp": "2026-04-14T20:00:05.000Z",
-  "uptime_seconds": 128,
-  "checks": {
-    "database": {
-      "status": "unhealthy",
-      "error": "connect ECONNREFUSED analytics-db:5432"
-    },
-    "redis": { "status": "healthy", "latency_ms": 2 },
-    "queue": { "status": "unhealthy", "error": "The client is closed" },
-    "worker": {
-      "status": "healthy",
-      "last_job_at": "never",
-      "jobs_processed": 0,
-      "seconds_since_last_job": null
-    }
-  }
-}
-```
-
----
-
 <!-- Add the rest of your endpoints below. One ### section per endpoint. -->
 
 ## Event Catalog Service
@@ -1012,6 +938,175 @@ curl http://users:3006/users/2e33a6d5-646c-49b6-b995-68d4bc3a9d21
   "email": "Wayne_Effertz@hotmail.com",
   "created_at": "2024-12-13T06:39:26.878Z"
 }
+```
+
+---
+
+## Analytics Worker (analytics)
+
+> **All endpoints are internal** — the analytics service has no external port mapping in `compose.yml`. Access these from inside the `holmes` container:
+> ```
+> docker compose exec holmes curl -s 'http://analytics:3000/<endpoint>'
+> ```
+
+---
+
+### GET /health
+
+Returns the health status of the analytics worker, including database, Redis, queue depths, and per-kind worker stats.
+
+**Request**
+
+```
+GET /health
+```
+
+**Response** `200 OK` (or `503` if any check is unhealthy)
+
+```json
+{
+  "status": "healthy",
+  "service": "analytics-worker",
+  "timestamp": "2026-04-30T21:00:00.000Z",
+  "uptime_seconds": 3600,
+  "checks": {
+    "database": { "status": "healthy", "latency_ms": 2 },
+    "redis": { "status": "healthy", "latency_ms": 1 },
+    "queue": {
+      "status": "healthy",
+      "purchase_depth": 0,
+      "browse_depth": 0,
+      "refund_depth": 0,
+      "dlq_depth": 0
+    },
+    "worker": {
+      "purchase": {
+        "status": "healthy",
+        "last_job_at": "2026-04-30T20:59:00.000Z",
+        "jobs_processed": 5,
+        "seconds_since_last_job": 60
+      },
+      "browse": {
+        "status": "healthy",
+        "last_job_at": "2026-04-30T20:59:30.000Z",
+        "jobs_processed": 12,
+        "seconds_since_last_job": 30
+      },
+      "refund": {
+        "status": "healthy",
+        "last_job_at": "2026-04-30T20:58:00.000Z",
+        "jobs_processed": 1,
+        "seconds_since_last_job": 120
+      }
+    }
+  }
+}
+```
+
+---
+
+### GET /most-viewed
+
+Returns the top events ranked by total view (browse) count.
+
+**Request**
+
+```
+GET /most-viewed?limit=3
+```
+
+| Query param | Type    | Default | Description                         |
+| ----------- | ------- | ------- | ----------------------------------- |
+| `limit`     | integer | `3`     | Maximum number of events to return  |
+
+**Example**
+
+```
+docker compose exec holmes curl -s 'http://analytics:3000/most-viewed?limit=5'
+```
+
+**Response** `200 OK`
+
+```json
+[
+  {
+    "event_id": "evt-abc123",
+    "view_count": "42",
+    "last_viewed_at": "2026-04-30T21:00:00.000Z"
+  }
+]
+```
+
+---
+
+### GET /most-refunded
+
+Returns the top events ranked by number of tickets refunded. Only events with at least one refund are included.
+
+**Request**
+
+```
+GET /most-refunded?limit=3
+```
+
+| Query param | Type    | Default | Description                         |
+| ----------- | ------- | ------- | ----------------------------------- |
+| `limit`     | integer | `3`     | Maximum number of events to return  |
+
+**Example**
+
+```
+docker compose exec holmes curl -s 'http://analytics:3000/most-refunded?limit=5'
+```
+
+**Response** `200 OK`
+
+```json
+[
+  {
+    "event_id": "evt-abc123",
+    "tickets_refunded": "3",
+    "refunded_revenue": "150.00",
+    "refund_events": "2"
+  }
+]
+```
+
+---
+
+### GET /peak-browse-times/:eventId
+
+Returns the busiest browse hours for a specific event, ranked by view count per hour bucket.
+
+**Request**
+
+```
+GET /peak-browse-times/:eventId?limit=3
+```
+
+| Path param | Type   | Description                       |
+| ---------- | ------ | --------------------------------- |
+| `eventId`  | string | The event ID to query             |
+
+| Query param | Type    | Default | Description                              |
+| ----------- | ------- | ------- | ---------------------------------------- |
+| `limit`     | integer | `3`     | Maximum number of hour buckets to return |
+
+**Example**
+
+```
+docker compose exec holmes curl -s 'http://analytics:3000/peak-browse-times/evt-abc123?limit=5'
+```
+
+**Response** `200 OK`
+
+```json
+[
+  {
+    "hour_bucket": "2026-04-30T15:00:00.000Z",
+    "view_count": "8"
+  }
+]
 ```
 
 ---
