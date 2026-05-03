@@ -10,6 +10,9 @@ app.use(express.urlencoded({ extended: true }));
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
+const SERVICE_NAME = process.env.SERVICE_NAME || 'payments';
+const INSTANCE_ID = process.env.HOSTNAME || 'unknown';
+
 const startTime = Date.now();
 app.get('/health', async (req, res) => {
   const checks = {}
@@ -31,6 +34,8 @@ app.get('/health', async (req, res) => {
     timestamp: new Date().toISOString(),
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     checks,
+    instance: INSTANCE_ID,
+    hostname: INSTANCE_ID,
   }
 
   res.status(healthy ? 200 : 503).json(body)
