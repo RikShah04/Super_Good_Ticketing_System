@@ -30,7 +30,7 @@ app.get('/health', async (req, res) => {
 
   const body = {
     status: healthy ? 'healthy' : 'unhealthy',
-    service: 'payments',
+    service: SERVICE_NAME,
     timestamp: new Date().toISOString(),
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     checks,
