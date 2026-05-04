@@ -16,7 +16,7 @@
 
 | Team Member | What They Delivered | Key Commits |
 | ----------- | ------------------- | ----------- |
-| [Name]      | | |
+| Henry Branham      | added payment endpoints to README.md, added JSDoc annotations to payment service code | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/78 |
 | [Name]      | | |
 | [Name]      | | |
 

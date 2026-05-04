@@ -10,7 +10,36 @@ app.use(express.urlencoded({ extended: true }));
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 
+const SERVICE_NAME = process.env.SERVICE_NAME || 'payments';
+const INSTANCE_ID = process.env.HOSTNAME || 'unknown';
+
 const startTime = Date.now();
+
+/**
+ * GET /health
+ * Returns overall service health.
+ *
+ * Provides a snapshot of service status, uptime, and dependency checks.
+ * Includes Postgres/database connectivity and latency.
+ *
+ * Example response:
+ * {
+ *   status: "healthy" | "unhealthy",
+ *   service: "payments",
+ *   timestamp: ISOString,
+ *   uptime_seconds: number,
+ *   checks: {
+ *     database: {
+ *       status: "healthy" | "unhealthy",
+ *       latency_ms?: number,
+ *       error?: string
+ *     }
+ *   }
+ * }
+ *
+ * @returns {200} Service healthy
+ * @returns {503} Service unhealthy
+ */
 app.get('/health', async (req, res) => {
   const checks = {}
   let healthy = true
@@ -27,10 +56,12 @@ app.get('/health', async (req, res) => {
 
   const body = {
     status: healthy ? 'healthy' : 'unhealthy',
-    service: 'payments',
+    service: SERVICE_NAME,
     timestamp: new Date().toISOString(),
     uptime_seconds: Math.floor((Date.now() - startTime) / 1000),
     checks,
+    instance: INSTANCE_ID,
+    hostname: INSTANCE_ID,
   }
 
   res.status(healthy ? 200 : 503).json(body)
@@ -44,15 +75,33 @@ async function returnError(res, statusCode, errorMessage){
   })
 }
 
-/* Example JSON payload:
-    {
-      cc: "3790123453827313",
-      cvv: "123",
-      expiry: "10/27",
-      cardType: "Visa", (Types: Amex, Visa, or Master)
-      price: 100.00
-    }
-*/
+/**
+ * POST /process
+ * Processes a payment.
+ *
+ * Validates input, simulates processing, and stores a payment token.
+ *
+ * Example request body:
+ * {
+ *   cc: "3790123453827313",
+ *   cvv: "123",
+ *   expiry: "10/27",
+ *   cardType: "Visa",
+ *   price: 100.00
+ * }
+ *
+ * Example success response:
+ * {
+ *   status: "success",
+ *   paymentID: string,
+ *   paymentToken: string,
+ *   timestamp: ISOString
+ * }
+ *
+ * @returns {200} Payment processed
+ * @returns {400} Invalid input
+ * @returns {500} Processing error
+ */
 app.post('/process', async (req, res) => {
 
   const paymentID = crypto.randomUUID();
@@ -108,11 +157,29 @@ app.post('/process', async (req, res) => {
 
 })
 
-/* Example JSON payload:
-    {
-      paymentID: "3f8a7c2e-91d4-4b6f-a9c1-5e2d7f8a1b3c"
-    }
-*/
+/**
+ * POST /refund
+ * Refunds a payment.
+ *
+ * Supports full and partial refunds by updating stored payment records in db
+ *
+ * Example request body:
+ * {
+ *   paymentID: "uuid",
+ *   amount: 50.00
+ * }
+ *
+ * Example success response:
+ * {
+ *   status: "partial_refund" | "refunded",
+ *   paymentID: string,
+ *   timestamp: ISOString
+ * }
+ *
+ * @returns {200} Refund successful
+ * @returns {400} Invalid request (e.g. not found, exceeds refundable amount)
+ * @returns {500} Processing error
+ */
 app.post('/refund', async (req, res) => {
   const { paymentID, amount } = req.body;
   const amountNum = Number(amount);

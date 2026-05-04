@@ -14,6 +14,8 @@ const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist:queue';
 const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
 const ANALYTICS_BQUEUE_NAME = process.env.ANALYTICS_BQUEUE_NAME || 'analytics:browse:queue';
 
+const INSTANCE_ID = process.env.HOSTNAME || 'unknown';
+
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
 pool.on('error', err => {
@@ -358,6 +360,8 @@ app.get('/health', async (_req, res) => {
         timestamp: new Date().toISOString(),
         redis: redisStats,
         database: dbStats,
+        instance: INSTANCE_ID,
+        hostname: INSTANCE_ID,
     });
 });
 

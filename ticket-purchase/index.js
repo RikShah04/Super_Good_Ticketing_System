@@ -333,9 +333,7 @@ app.post('/verify', async (req, res) => {
   // cache refund in Redis for /refund to confirm
   // if too much time has passed, the refund will cancel
   await client.set(`ticket-purchase-refund:${purchaseId}`, seats, { EX: TTL_MIN * 60 });
-
-  const purchasePayload = { ...purchase, seats: purchase.purchased_seats };
-  res.status(200).json(purchasePayload);
+  res.status(200).json(purchase);
 });
 
 app.post('/refund', async (req, res) => {
