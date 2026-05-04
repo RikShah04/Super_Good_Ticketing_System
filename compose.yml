@@ -52,10 +52,9 @@ services:
 
   payment:
     build: ./payment
-    container_name: payment
     restart: unless-stopped
-    ports:
-      - "3003:3001"          # expose on host for local testing
+    expose:
+      - "3001"               # expose on host for local testing
     networks:
       - team-net             # REQUIRED — makes it reachable from holmes
     environment:
@@ -64,7 +63,7 @@ services:
       payment-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -295,10 +294,9 @@ services:
 
   event-catalog:
     build: ./event-catalog
-    container_name: event-catalog
     restart: unless-stopped
-    ports:
-      - "3005:3005"
+    expose:
+      - "3005"
     networks:
       - team-net
     environment:
@@ -313,7 +311,7 @@ services:
       events-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3005/health"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/health || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 5
