@@ -19,7 +19,7 @@
 | Henry Branham      | added payment endpoints to README.md, added JSDoc annotations to payment service code | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/78 |
 | Jonathan Zhang      | confirmed proper analytics schema, added internal endpts aggregate stats, edit docs | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/79 |
 | Jasper McCormack | Corrected health endpoint errors | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/82 |
-| [Name]      | | |
+| Ethan Pham      | Wrote k6 scale test | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/81 |
 
 ---
 
