@@ -20,6 +20,8 @@
 | Jonathan Zhang      | confirmed proper analytics schema, added internal endpts aggregate stats, edit docs | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/79 |
 | Jasper McCormack | Corrected health endpoint errors | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/82 |
 | Ethan Pham      | Wrote k6 scale test | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/81 |
+| Rikhav Shah      | Wrote k6 replica test | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/83 |
+
 
 ---
 
