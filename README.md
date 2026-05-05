@@ -15,7 +15,7 @@
 | Ethan Pham | `ticket-purchase/`, `k6/` |
 | Jasper McCormack | `event-catalog/`, `users/` |
 | Henry Branham | `payment/` |
-| Rikhav Shah | `notification/`, `waitlist/`, `/k6` |
+| Rikhav Shah | `notification/`, `waitlist/`, `k6/` |
 | Erika Lam | `refund/`, `k6/` |
 | James Rust | `fraud-detection/`, `Caddyfile` |
 | Jonathan Zhang | `analytics/` |
