@@ -1,14 +1,14 @@
-# Sprint 4 Report — [Team Name]
+# Sprint 4 Report — Super Good Ticketing System
 
 **Sprint:** 4 — Replication, Scaling, and Polish  
 **Tag:** `sprint-4`  
-**Submitted:** [date, before 05.05 class]
+**Submitted:** 05/05
 
 ---
 
 ## What We Built
 
-[Which services are replicated? How does load balancing work? What polish work was completed?]
+Some systems were returning unhealthy even if they were fully functional, and these errors were fixed. We also implemented round-robin Caddy load balancing, allowing us to start the system up with `--scale`. `ticket-purchase`, `event-catalog`, and `payments` are replicated. 
 
 ---
 
@@ -52,6 +52,8 @@ After startup:
 ---
 
 ## What Is Not Working / Cut
+
+The whole system is functional now.
 
 ---
 
