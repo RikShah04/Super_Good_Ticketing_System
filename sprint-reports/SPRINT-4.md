@@ -23,6 +23,7 @@
 | Ethan Pham      | Wrote k6 scale test | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/81 |
 | Rikhav Shah      | Wrote k6 replica test | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/83 |
 | Erika Lam      | clean up refund code | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/76 |
+| Ian Mei| Testing Pull Requests | N/A
 
 ---
 
