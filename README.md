@@ -764,6 +764,102 @@ docker compose exec holmes curl http://fraud-worker:3000/health
 
 ## Refund Worker
 
+### POST /refund
+
+```
+POST /refund
+
+  Coordinates a refund across the system:
+    - verifies the purchase with ticket-purchase
+    - calculates the refund amount from the original purchase charge and seat count
+    - creates a pending refund row in refund-db
+    - calls payment to process the refund
+    - calls event-catalog to unreserve/release the refunded seats
+    - calls ticket-purchase to mark the purchase seats as refunded
+    - publishes refund events to analytics, notifications, and waitlist
+    - marks the refund as completed
+
+  Request body:
+    purchaseId  integer  required  ID of the original ticket purchase
+    seats       integer  required  Number of seats to refund
+    idemKey     string   required  Idempotency key for safely retrying the same refund request
+
+  Responses:
+    200 Refund completed successfully
+    400 Missing/invalid request body, or refund is not allowed
+    404 Purchase not found
+    409 Duplicate refund still processing
+    500 Unexpected server error
+```
+
+**Example request:**
+
+```bash
+curl -X POST http://localhost:3001/refund \
+  -H "Content-Type: application/json" \
+  -H "x-user-id: 168b7f42-3584-4db4-bc9a-f3eb3e734bf3" \
+  -d '{
+    "purchaseId": 1,
+    "seats": 1,
+    "idemKey": "refund-idem-1"
+  }'
+```
+
+**Example response (200):**
+
+```json
+{
+  "message": "Refund successful",
+  "refundId": 1,
+  "purchaseId": 1,
+  "eventId": "1654b713-a1d7-479d-85a9-4ecaddbdba9c",
+  "paymentId": "3634242b-7835-4106-9598-3637f95b81f6",
+  "seats": 1,
+  "amount": 50
+}
+```
+
+**Example response (400):**
+
+```json
+{
+  "message": "Proper purchaseID, seats, and idemKey are required"
+}
+```
+
+**Example response (404):**
+
+```json
+{
+  "message": "Purchase not found"
+}
+```
+
+**Example response (409):**
+
+```json
+{
+  "message": "Duplicate refund detected; request still processing"
+}
+```
+
+**Example duplicate response after the original refund completed:**
+
+```json
+{
+  "message": "Refund successful",
+  "refundId": 1,
+  "purchaseId": 1,
+  "eventId": "1654b713-a1d7-479d-85a9-4ecaddbdba9c",
+  "paymentId": "3634242b-7835-4106-9598-3637f95b81f6",
+  "seats": 1,
+  "amount": 50,
+  "duplicate": true,
+  "duplicateMessage": "Duplicate refund detected; previous request completed with status success"
+}
+```
+
+
 ### GET /health
 
 ```
@@ -781,7 +877,7 @@ GET /health
 **Example request:**
 
 ```bash
-docker compose exec holmes curl http://notification:3001/health
+docker compose exec holmes curl http://refund:3001/health
 ```
 
 **Example response (200):**

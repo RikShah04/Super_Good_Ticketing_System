@@ -22,7 +22,7 @@
 | James Rust      | Caddy load balancing for ticket purchase, payment, and event catalog services; added instance IDs to verify load is actually balancing | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/80 |
 | Ethan Pham      | Wrote k6 scale test | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/81 |
 | Rikhav Shah      | Wrote k6 replica test | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/83 |
-
+| Erika Lam      | clean up refund code | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/76 |
 
 ---
 
