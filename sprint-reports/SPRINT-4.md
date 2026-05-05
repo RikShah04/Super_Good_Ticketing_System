@@ -30,13 +30,32 @@ Some systems were returning unhealthy even if they were fully functional, and th
 ## Starting the System with Replicas
 
 ```bash
-docker compose up --scale [service-name]=3 --scale [other-service]=2
+docker compose up --scale ticket-purchase=3 --scale event-catalog=3 --scale payment=3
 ```
 
 After startup:
 
 ```
-[Paste docker compose ps output here showing all replicas as (healthy)]
+NAME                                            IMAGE                                         COMMAND                  SERVICE              CREATED          STATUS                    PORTS
+analytics                                       super_good_ticketing_system-analytics         "docker-entrypoint.s…"   analytics            45 seconds ago   Up 42 seconds (healthy)   3000/tcp
+analytics-db                                    postgres:16                                   "docker-entrypoint.s…"   analytics-db         8 minutes ago    Up 8 minutes (healthy)    5432/tcp
+events-db                                       postgres:16                                   "docker-entrypoint.s…"   events-db            8 minutes ago    Up 8 minutes (healthy)    5432/tcp
+fraud-db                                        postgres:16                                   "docker-entrypoint.s…"   fraud-db             8 minutes ago    Up 8 minutes (healthy)    5432/tcp
+fraud-worker                                    super_good_ticketing_system-fraud-worker      "docker-entrypoint.s…"   fraud-worker         44 seconds ago   Up 36 seconds (healthy)   3000/tcp
+holmes                                          super_good_ticketing_system-holmes            "sleep infinity"         holmes               45 seconds ago   Up 42 seconds             
+notification                                    super_good_ticketing_system-notification      "docker-entrypoint.s…"   notification         45 seconds ago   Up 42 seconds (healthy)   0.0.0.0:3002->3000/tcp, [::]:3002->3000/tcp
+payment-db                                      postgres:16                                   "docker-entrypoint.s…"   payment-db           8 minutes ago    Up 8 minutes (healthy)    5432/tcp
+redis                                           redis:7                                       "docker-entrypoint.s…"   redis                8 minutes ago    Up 8 minutes (healthy)    6379/tcp
+refund                                          super_good_ticketing_system-refund            "docker-entrypoint.s…"   refund               45 seconds ago   Up 42 seconds (healthy)   0.0.0.0:3001->3000/tcp, [::]:3001->3000/tcp
+refund-db                                       postgres:16                                   "docker-entrypoint.s…"   refund-db            8 minutes ago    Up 8 minutes (healthy)    5432/tcp
+super_good_ticketing_system-caddy-1             caddy:2-alpine                                "caddy run --config …"   caddy                8 minutes ago    Up 8 minutes              0.0.0.0:3000->80/tcp, [::]:3000->80/tcp
+super_good_ticketing_system-event-catalog-1     super_good_ticketing_system-event-catalog     "docker-entrypoint.s…"   event-catalog        45 seconds ago   Up 42 seconds (healthy)   3005/tcp
+super_good_ticketing_system-payment-2           super_good_ticketing_system-payment           "docker-entrypoint.s…"   payment              45 seconds ago   Up 42 seconds (healthy)   3001/tcp
+super_good_ticketing_system-ticket-purchase-3   super_good_ticketing_system-ticket-purchase   "docker-entrypoint.s…"   ticket-purchase      45 seconds ago   Up 42 seconds (healthy)   3000/tcp
+ticket-purchase-db                              postgres:16                                   "docker-entrypoint.s…"   ticket-purchase-db   8 minutes ago    Up 8 minutes (healthy)    5432/tcp
+users                                           super_good_ticketing_system-users             "docker-entrypoint.s…"   users                45 seconds ago   Up 42 seconds (healthy)   0.0.0.0:3006->3006/tcp, [::]:3006->3006/tcp
+users-db                                        postgres:16                                   "docker-entrypoint.s…"   users-db             8 minutes ago    Up 8 minutes (healthy)    5432/tcp
+waitlist                                        super_good_ticketing_system-waitlist          "docker-entrypoint.s…"   waitlist             45 seconds ago   Up 42 seconds (healthy)
 ```
 
 ---
