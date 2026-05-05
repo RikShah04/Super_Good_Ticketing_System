@@ -19,6 +19,7 @@
 | Henry Branham      | added payment endpoints to README.md, added JSDoc annotations to payment service code | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/78 |
 | Jonathan Zhang      | confirmed proper analytics schema, added internal endpts aggregate stats, edit docs | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/79 |
 | Jasper McCormack | Corrected health endpoint errors | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/82 |
+| James Rust      | Caddy load balancing for ticket purchase, payment, and event catalog services; added instance IDs to verify load is actually balancing | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/80 |
 | Ethan Pham      | Wrote k6 scale test | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/81 |
 | Rikhav Shah      | Wrote k6 replica test | https://github.com/RikShah04/Super_Good_Ticketing_System/pull/83 |
 
@@ -41,11 +42,11 @@ After startup:
 
 ## What Is Working
 
-- [ ] At least [N] services replicated via `--scale`
-- [ ] Load balancer distributes traffic across replicas (visible in logs)
-- [ ] Services are stateless — multiple instances run without conflicts
-- [ ] `docker compose ps` shows all replicas as `(healthy)`
-- [ ] System is fully complete for team size
+- [x] At least 3 services replicated via `--scale`
+- [x] Load balancer distributes traffic across replicas (visible in logs)
+- [x] Services are stateless — multiple instances run without conflicts
+- [x] `docker compose ps` shows all replicas as `(healthy)`
+- [x] System is fully complete for team size
 
 ---
 
@@ -123,3 +124,5 @@ super_good_ticketing_system-event-catalog-3     super_good_ticketing_system-even
 ---
 
 ## Blockers and Lessons Learned
+
+We did not add much functionality for this sprint, but from this project as a whole, we learned how integral clear communication is when building a complex system. Every team member needs to understand how their piece fits into the larger puzzle, and by the end, every member of our team worked well together to complete the system.
