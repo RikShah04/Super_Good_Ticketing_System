@@ -55,7 +55,7 @@ waitlist           http://waitlist:3000             worker
 fraud-worker       http://fraud-worker:3000         worker
 analytics          http://analytics:3000            worker
 notification       http://notification:3000         worker
-redis              (no port)
+redis              http://redis:6379
 holmes             (no port, access via exec)
 ```
 
