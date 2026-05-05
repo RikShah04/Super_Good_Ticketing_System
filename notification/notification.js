@@ -37,7 +37,7 @@ app.get('/health', async (req, res) => {
   const redisStart = Date.now()
   try {
     const pong = await client.ping()
-    if (pong !== 'PONG') throw new Error(`unexpected response: ${pong}`)
+    if (String(pong).toUpperCase() !== 'PONG') throw new Error(`unexpected response: ${pong}`)
     checks.redis = { status: 'healthy', latency_ms: Date.now() - redisStart }
   } catch (err) {
     checks.redis = { status: 'unhealthy', error: err.message }

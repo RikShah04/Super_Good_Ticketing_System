@@ -1,10 +1,31 @@
 :80 {
-  reverse_proxy {
-    dynamic a ticket-purchase 3000 {
-      refresh 5s
-      resolvers 127.0.0.11
+  handle_path /purchase* {
+    reverse_proxy {
+      dynamic a ticket-purchase 3000 {
+        refresh 5s
+        resolvers 127.0.0.11
+      }
+      lb_policy round_robin
     }
+  }
 
-    lb_policy round_robin
+  handle_path /payment* {
+    reverse_proxy {
+      dynamic a payment 3001 {
+        refresh 5s
+        resolvers 127.0.0.11
+      }
+      lb_policy round_robin
+    }
+  }
+
+  handle_path /events* {
+    reverse_proxy {
+      dynamic a event-catalog 3005 {
+        refresh 5s
+        resolvers 127.0.0.11
+      }
+      lb_policy round_robin
+    }
   }
 }

@@ -40,6 +40,9 @@ client.on('error', (err) => {
 });
 await client.connect();
 
+const healthClient = client.duplicate();
+await healthClient.connect();
+
 const startTime = Date.now();
 
 const keys = {
@@ -291,7 +294,7 @@ app.get('/health', async (req, res) => {
 
   const redisStart = Date.now();
   try {
-    await client.ping();
+    await healthClient.ping();
     checks.redis = { status: 'healthy', latency_ms: Date.now() - redisStart };
   } catch (err) {
     checks.redis = { status: 'unhealthy', error: err.message };
@@ -299,8 +302,8 @@ app.get('/health', async (req, res) => {
   }
 
   try {
-    const queueDepth = await client.lLen(QUEUE_NAME);
-    const dlqDepth = await client.lLen(DLQ_NAME);
+    const queueDepth = await healthClient.lLen(QUEUE_NAME);
+    const dlqDepth = await healthClient.lLen(DLQ_NAME);
 
     checks.queue = {
       status: queueDepth < 1000 ? 'healthy' : 'degraded',
