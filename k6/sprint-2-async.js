@@ -1,11 +1,11 @@
-// Sprint 1 — Baseline load test
+// Sprint 2 — Async pipeline burst test
 //
 // Run from inside the holmes container:
 //   docker compose exec holmes bash
-//   k6 run /workspace/k6/sprint-1.js
+//   k6 run /workspace/k6/sprint-2-async.js
 //
 // Or from your host machine if k6 is installed:
-//   k6 run k6/sprint-1.js
+//   k6 run k6/sprint-2-async.js
 //
 // Replace TARGET_URL with your main read endpoint.
 
@@ -57,7 +57,7 @@ export default function () {
 
   const ok = check(res, {
     "status is expected": (r) =>
-        [200, 400, 404, 409].includes(r.status), // gives error codes that event ticketing uses to signal not enoguh seats, client-errored failure, and event not found
+        [200, 400, 404, 409].includes(r.status), // gives error codes that event ticketing uses to signal not enough seats, client-errored failure, and event not found
     "response time < 2s": (r) => r.timings.duration < 2000,
   });
 

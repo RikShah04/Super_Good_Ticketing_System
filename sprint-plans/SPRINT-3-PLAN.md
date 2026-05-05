@@ -24,6 +24,14 @@ For this sprint, we will be adding DLQs and poison pill handling to the workers 
 | Ethan      | `ticket-purchase/` |
 | Henry      | `payment/`    |
 | Erika      | `refund/`     |
+| James      | `fraud-detection/` |
+| Jonathan      | `analytics/` |
+| Rikhav      | `waitlist/` |
+| Jasper      | `event-catalog/` |
+| Ian        | `event-catalog/`, `k6` |
+| Ethan      | `ticket-purchase/` |
+| Henry      | `payment/`    |
+| Erika      | `refund/`     |
 
 ---
 

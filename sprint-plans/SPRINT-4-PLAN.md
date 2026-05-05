@@ -1,4 +1,4 @@
-# Sprint 4 Plan — [Team Name]
+# Sprint 4 Plan — Super Good Ticketing System
 
 **Sprint:** 4 — Replication, Scaling, and Polish  
 **Dates:** 04.28 → 05.07  
@@ -8,7 +8,9 @@
 
 ## Goal
 
-[Which services will you replicate? What is the exact `--scale` command? What polish work remains?]
+We have already replicated `ticket-purchase`. We will also replicate `payment` and `event-catalog`.
+
+We just have file cleanup left, no other polish work.
 
 ---
 
@@ -16,29 +18,36 @@
 
 | Team Member | Files / Directories Owned This Sprint |
 | ----------- | ------------------------------------- |
-| [Name]      | `[path]` |
-| [Name]      | `[path]` |
-| [Name]      | `[path]` |
+| James       | `Caddyfile` |
+| Ethan       | `k6/sprint-4-scale.js` |
+| Rikhav      | `k6/sprint-4-replica.js` |
 
 ---
 
 ## Tasks
 
-### [Name]
+### James
 
-- [ ] ...
+- [ ] Add Caddy scaling for `payment` and `event-catalog`
 
-### [Name]
+### Ethan
 
-- [ ] ...
+- [ ] Implement k6 scaling comparison testing
 
-### [Name]
+### Rikhav
 
-- [ ] ...
+- [ ] Implement k6 replica testing
+
+### Everyone
+
+- [ ] Update README.md documentation with service endpoints/functionality
+- [ ] File cleanup
 
 ---
 
 ## Risks
+
+We do not anticipate any risks this sprint. Compared to previous sprints, we much fewer tasks to accomplish, and because we have been careful while building our system, we also do not anticipate a lot of polish work.
 
 ---
 

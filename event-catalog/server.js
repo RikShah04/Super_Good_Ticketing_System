@@ -9,7 +9,12 @@ const port = Number(process.env.PORT || '3005');
 const SERVICE_NAME = process.env.SERVICE_NAME || 'event-catalog';
 
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://user:pass@events-db:5432/events-db"
+const WAITLIST_QUEUE_NAME = process.env.WAITLIST_QUEUE_NAME || 'waitlist:queue';
+
 const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
+const ANALYTICS_BQUEUE_NAME = process.env.ANALYTICS_BQUEUE_NAME || 'analytics:browse:queue';
+
+const INSTANCE_ID = process.env.HOSTNAME || 'unknown';
 
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 
@@ -54,18 +59,18 @@ function publishEvent({
     extra = {}
 }) {
     const eventPayload = {
-        idem_key: randomUUID(),
-        event_type: eventType,
-        source_service: SERVICE_NAME,
-        event_id: eventId,
-        user_id: userId || null,
-        seats: seats,
-        price_usd: priceUsd,
-        emitted_at: new Date().toISOString(),
-        payload: extra
+        idemKey: randomUUID(),
+        eventType,
+        sourceService: SERVICE_NAME,
+        eventId,
+        userId: userId || null,
+        seats,
+        priceUsd,
+        emittedAt: new Date().toISOString(),
+        payload: extra,
     };
 
-    client.lPush("analytics:queue", JSON.stringify(eventPayload))
+    client.lPush(ANALYTICS_BQUEUE_NAME, JSON.stringify(eventPayload))
         .catch(err => {
             console.error("Failed to enqueue analytics event: ", err.message);
         });
@@ -298,9 +303,14 @@ app.post("/unreserve-seats", async (req, res) => {
             'UPDATE eventcatalog SET availableseats = availableseats + $1 WHERE id = $2',
             [seats, event_id]
         );
-
+        
         await db.query('COMMIT');
         await client.del(`event:${event_id}`);
+
+        for (let i = 0; i < seats; i++) {
+            await client.lPush(WAITLIST_QUEUE_NAME, JSON.stringify({ eventId: event_id, paymentInfo: null, idemKey: null }));
+        }   
+
         return res.status(200).json({
             message: 'Refund Successful!',
             seatCost: event.priceusd,
@@ -350,6 +360,8 @@ app.get('/health', async (_req, res) => {
         timestamp: new Date().toISOString(),
         redis: redisStats,
         database: dbStats,
+        instance: INSTANCE_ID,
+        hostname: INSTANCE_ID,
     });
 });
 
