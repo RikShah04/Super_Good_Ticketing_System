@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Good Ticketing — Events</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3352;
+      --text: #e2e8f0;
+      --muted: #7c85a8;
+      --green: #22c55e;
+      --green-bg: rgba(34,197,94,0.12);
+      --red: #ef4444;
+      --red-bg: rgba(239,68,68,0.12);
+      --yellow: #f59e0b;
+      --yellow-bg: rgba(245,158,11,0.12);
+      --blue: #3b82f6;
+      --blue-bg: rgba(59,130,246,0.12);
+      --accent: #6366f1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* ── Nav ── */
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      padding: 5px 10px;
+      border-radius: 6px;
+    }
+    nav a:hover { color: var(--text); background: var(--surface2); }
+    nav a.active { color: var(--accent); background: var(--surface2); }
+    nav .brand { font-weight: 700; font-size: 1rem; color: var(--text); margin-right: 8px; }
+    nav .brand span { color: var(--accent); }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Controls panel ── */
+    .controls-panel {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .control-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .control-card h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .control-card p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 7px;
+      border: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: 0.85; }
+    .btn-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
+    .btn-green:hover:not(:disabled) { background: var(--green); color: #000; }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-ghost:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+
+    select {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 10px;
+      font-size: 0.85rem;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    select:focus { outline: none; border-color: var(--accent); }
+
+    /* ── Status badges ── */
+    .status-line {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 24px;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.running  { background: var(--green); animation: pulse 1.5s infinite; box-shadow: 0 0 5px var(--green); }
+    .status-dot.idle     { background: var(--muted); }
+    .status-dot.ok       { background: var(--green); }
+    .status-dot.error    { background: var(--red); }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* ── Output box ── */
+    .output-box {
+      margin-top: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: var(--green);
+      white-space: pre-wrap;
+      max-height: 100px;
+      overflow-y: auto;
+      display: none;
+    }
+
+    /* ── Search bar ── */
+    .search-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .search-row input {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 0.85rem;
+      flex: 1;
+      min-width: 200px;
+    }
+    .search-row input:focus { outline: none; border-color: var(--accent); }
+    .search-row input::placeholder { color: var(--muted); }
+
+    /* ── Events table ── */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      background: var(--surface2);
+      padding: 10px 14px;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+
+    tbody td {
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      vertical-align: middle;
+    }
+
+    .mono { font-family: monospace; color: var(--accent); font-size: 0.78rem; }
+
+    .seats-bar-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .seats-bar-bg {
+      flex: 1;
+      max-width: 80px;
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .seats-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+    }
+    .seats-text { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+
+    /* ── Pagination ── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .pagination-btns { display: flex; gap: 8px; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .empty-state strong { display: block; color: var(--text); font-size: 1.1rem; margin-bottom: 6px; }
+
+    /* ── Loading skeleton ── */
+    .loading-row td { color: var(--muted); font-style: italic; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <span class="brand">Super Good Ticketing <span>Dashboard</span></span>
+    <a href="/">Overview</a>
+    <a href="/events.html" class="active">Events</a>
+    <a href="/test.html">Test Runner</a>
+  </nav>
+
+  <!-- Controls -->
+  <p class="section-title">Admin Controls</p>
+  <div class="controls-panel">
+
+    <!-- Seed card -->
+    <div class="control-card">
+      <h3>Seed Event Catalog</h3>
+      <p>Populate the event-catalog database with 50 randomly generated events.</p>
+      <button id="seed-btn" class="btn btn-green" onclick="runSeed()">Seed Events</button>
+      <div class="status-line" id="seed-status">
+        <div class="status-dot idle"></div><span>Ready</span>
+      </div>
+      <pre id="seed-output" class="output-box"></pre>
+    </div>
+
+    <!-- k6 card -->
+    <div class="control-card">
+      <h3>Run Load Test</h3>
+      <p>Execute a k6 script inside the holmes container. Watch the queue depths spike on the Overview page.</p>
+      <select id="k6-script">
+        <option value="sprint-3-poison">Sprint 3 — Purchase Pipeline (~70s) ← shows queues</option>
+        <option value="sprint-4-scale">Sprint 4 — Scale Test, reads only (~100s)</option>
+        <option value="sprint-4-replica">Sprint 4 — Replica Test, reads only (~70s)</option>
+        <option value="sprint-2-cache">Sprint 2 — Cache Test, reads only (~70s)</option>
+      </select>
+      <button id="k6-btn" class="btn btn-primary" onclick="runK6()">▶ Run Load Test</button>
+      <div class="status-line" id="k6-status">
+        <div class="status-dot idle"></div><span id="k6-status-text">Idle</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Events table -->
+  <p class="section-title">Events</p>
+  <div class="search-row">
+    <input id="venue-search" type="text" placeholder="Filter by venue…" oninput="debounceSearch()" />
+    <button class="btn btn-ghost" onclick="loadEvents(1)">Search</button>
+    <span id="total-label" style="font-size:0.82rem;color:var(--muted)">Loading…</span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Event Name</th>
+          <th>Venue</th>
+          <th>Date</th>
+          <th>Price</th>
+          <th>Seats Available</th>
+        </tr>
+      </thead>
+      <tbody id="events-body">
+        <tr class="loading-row"><td colspan="6">Loading events…</td></tr>
+      </tbody>
+    </table>
+    <div class="pagination" id="pagination" style="display:none">
+      <span id="page-info"></span>
+      <div class="pagination-btns">
+        <button class="btn btn-ghost" id="prev-btn" onclick="changePage(-1)">← Prev</button>
+        <button class="btn btn-ghost" id="next-btn" onclick="changePage(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentPage = 1;
+    let totalPages = 1;
+    let totalEvents = 0;
+    let debounceTimer = null;
+
+    // ── Events table ─────────────────────────────────────────────────────────
+
+    async function loadEvents(page = 1) {
+      currentPage = page;
+      const venue = document.getElementById('venue-search').value.trim();
+      const tbody = document.getElementById('events-body');
+      tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Loading…</td></tr>';
+
+      try {
+        const qs = new URLSearchParams({ page, limit: 20, ...(venue ? { venue } : {}) });
+        const res = await fetch(`/api/events?${qs}`);
+        const data = await res.json();
+
+        totalEvents = data.total ?? 0;
+        totalPages = Math.ceil(totalEvents / 20) || 1;
+
+        document.getElementById('total-label').textContent = `${totalEvents} event${totalEvents !== 1 ? 's' : ''}`;
+        document.getElementById('page-info').textContent = `Page ${currentPage} of ${totalPages}`;
+        document.getElementById('prev-btn').disabled = currentPage <= 1;
+        document.getElementById('next-btn').disabled = currentPage >= totalPages;
+        document.getElementById('pagination').style.display = 'flex';
+
+        if (!data.events || data.events.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><strong>No events found</strong>Try seeding the database or adjusting your filter.</div></td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.events.map(ev => {
+          const avail = ev.availableseats ?? ev.availableSeats ?? 0;
+          const total = ev.totalseats ?? ev.totalSeats ?? 1;
+          const pct = Math.round((avail / total) * 100);
+          const barColor = pct > 50 ? '#22c55e' : pct > 20 ? '#f59e0b' : '#ef4444';
+          const date = ev.eventdate ? new Date(ev.eventdate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+          const price = ev.priceusd ? `$${parseFloat(ev.priceusd).toFixed(2)}` : '—';
+
+          return `<tr>
+            <td class="mono">${ev.id.slice(0, 8)}…</td>
+            <td style="font-weight:500">${escHtml(ev.name || '—')}</td>
+            <td style="color:var(--muted)">${escHtml(ev.venue || '—')}</td>
+            <td style="color:var(--muted)">${date}</td>
+            <td style="font-weight:600">${price}</td>
+            <td>
+              <div class="seats-bar-wrap">
+                <div class="seats-bar-bg">
+                  <div class="seats-bar-fill" style="width:${pct}%;background:${barColor}"></div>
+                </div>
+                <span class="seats-text">${avail.toLocaleString()} / ${total.toLocaleString()}</span>
+              </div>
+            </td>
+          </tr>`;
+        }).join('');
+
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--red);padding:16px">${err.message}</td></tr>`;
+      }
+    }
+
+    function changePage(delta) {
+      const next = currentPage + delta;
+      if (next < 1 || next > totalPages) return;
+      loadEvents(next);
+    }
+
+    function debounceSearch() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => loadEvents(1), 400);
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Seed ──────────────────────────────────────────────────────────────────
+
+    async function runSeed() {
+      const btn = document.getElementById('seed-btn');
+      const statusEl = document.getElementById('seed-status');
+      const outputEl = document.getElementById('seed-output');
+      btn.disabled = true;
+      btn.textContent = 'Seeding…';
+      setStatus(statusEl, 'running', 'Running seed script…');
+      outputEl.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/admin/seed', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+          setStatus(statusEl, 'ok', 'Seeded successfully');
+          outputEl.textContent = data.output || '(no output)';
+          outputEl.style.display = 'block';
+          setTimeout(() => loadEvents(1), 500);
+        } else {
+          setStatus(statusEl, 'error', data.error || 'Seed failed');
+        }
+      } catch (err) {
+        setStatus(statusEl, 'error', err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Seed Events';
+      }
+    }
+
+    // ── k6 ────────────────────────────────────────────────────────────────────
+
+    let k6PollTimer = null;
+
+    async function runK6() {
+      const btn = document.getElementById('k6-btn');
+      const script = document.getElementById('k6-script').value;
+
+      btn.disabled = true;
+      btn.textContent = '▶ Starting…';
+
+      try {
+        const res = await fetch('/api/admin/k6', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ script }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          startK6Poll();
+        } else {
+          setK6Status('error', data.error || 'Failed to start');
+          btn.disabled = false;
+          btn.textContent = '▶ Run Load Test';
+        }
+      } catch (err) {
+        setK6Status('error', err.message);
+        btn.disabled = false;
+        btn.textContent = '▶ Run Load Test';
+      }
+    }
+
+    function startK6Poll() {
+      clearInterval(k6PollTimer);
+      k6PollTimer = setInterval(async () => {
+        try {
+          const res = await fetch('/api/admin/k6/status');
+          const data = await res.json();
+          const btn = document.getElementById('k6-btn');
+          if (data.running) {
+            const elapsed = data.startedAt ? Math.round((Date.now() - new Date(data.startedAt)) / 1000) : '?';
+            setK6Status('running', `Running ${data.script} (${elapsed}s elapsed) — watch queue depths on Overview`);
+            btn.disabled = true;
+            btn.textContent = '▶ Running…';
+          } else {
+            setK6Status('idle', 'Idle — last run finished');
+            btn.disabled = false;
+            btn.textContent = '▶ Run Load Test';
+            clearInterval(k6PollTimer);
+          }
+        } catch {}
+      }, 3000);
+    }
+
+    function setK6Status(type, text) {
+      const el = document.getElementById('k6-status');
+      const dot = el.querySelector('.status-dot');
+      dot.className = `status-dot ${type}`;
+      document.getElementById('k6-status-text').textContent = text;
+    }
+
+    function setStatus(el, type, text) {
+      el.querySelector('.status-dot').className = `status-dot ${type}`;
+      el.querySelector('span').textContent = text;
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+
+    async function init() {
+      loadEvents(1);
+      // Check if k6 is already running (e.g. page reload mid-run)
+      try {
+        const res = await fetch('/api/admin/k6/status');
+        const data = await res.json();
+        if (data.running) startK6Poll();
+      } catch {}
+    }
+
+    init();
+  </script>
+</body>
+</html>
