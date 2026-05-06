@@ -319,9 +319,15 @@
         <div id="bar-waitlist" style="flex:20; background:var(--yellow)"></div>
       </div>
 
+      <div class="field" style="margin-bottom:14px">
+        <label>Concurrency (requests per batch) <span id="val-concurrency" style="color:var(--blue)">5</span></label>
+        <input type="range" id="inp-concurrency" min="1" max="20" value="5" step="1">
+        <small style="color:var(--muted);font-size:0.72rem">Higher = more items in queues at once</small>
+      </div>
+
       <div class="field" style="margin-bottom:18px">
-        <label>Delay between requests (ms) <span id="val-delay">300</span></label>
-        <input type="range" id="inp-delay" min="50" max="2000" value="300" step="50">
+        <label>Delay between batches (ms) <span id="val-delay">300</span></label>
+        <input type="range" id="inp-delay" min="0" max="2000" value="300" step="50">
       </div>
 
       <button class="btn btn-primary" id="btn-run" style="width:100%">▶ Run Test</button>
@@ -405,15 +411,17 @@
 
 <script>
   // ── Slider bindings ──────────────────────────────────────────────────────────
-  const totalEl   = document.getElementById('inp-total');
-  const validEl   = document.getElementById('inp-valid');
-  const fraudEl   = document.getElementById('inp-fraud');
-  const delayEl   = document.getElementById('inp-delay');
-  const valTotal  = document.getElementById('val-total');
-  const valValid  = document.getElementById('val-valid');
-  const valFraud  = document.getElementById('val-fraud');
-  const valWaitlist = document.getElementById('val-waitlist');
-  const valDelay  = document.getElementById('val-delay');
+  const totalEl       = document.getElementById('inp-total');
+  const validEl       = document.getElementById('inp-valid');
+  const fraudEl       = document.getElementById('inp-fraud');
+  const delayEl       = document.getElementById('inp-delay');
+  const concurrencyEl = document.getElementById('inp-concurrency');
+  const valTotal      = document.getElementById('val-total');
+  const valValid      = document.getElementById('val-valid');
+  const valFraud      = document.getElementById('val-fraud');
+  const valWaitlist   = document.getElementById('val-waitlist');
+  const valDelay      = document.getElementById('val-delay');
+  const valConcurrency= document.getElementById('val-concurrency');
   const barValid  = document.getElementById('bar-valid');
   const barFraud  = document.getElementById('bar-fraud');
   const barWait   = document.getElementById('bar-waitlist');
@@ -421,7 +429,6 @@
   function updateMix() {
     const v = parseFloat(validEl.value);
     const f = parseFloat(fraudEl.value);
-    // clamp fraud so v+f <= 100
     if (v + f > 100) fraudEl.value = 100 - v;
     const fClamped = parseFloat(fraudEl.value);
     const w = Math.max(0, 100 - v - fClamped);
@@ -429,7 +436,8 @@
     valValid.textContent = v + '%';
     valFraud.textContent = fClamped + '%';
     valWaitlist.textContent = w + '%';
-    valDelay.textContent = delayEl.value;
+    valDelay.textContent = delayEl.value === '0' ? 'none' : delayEl.value + 'ms';
+    valConcurrency.textContent = concurrencyEl.value;
     barValid.style.flex = v;
     barFraud.style.flex = fClamped;
     barWait.style.flex  = w;
@@ -439,6 +447,7 @@
   validEl.addEventListener('input', updateMix);
   fraudEl.addEventListener('input', updateMix);
   delayEl.addEventListener('input', updateMix);
+  concurrencyEl.addEventListener('input', updateMix);
   updateMix();
 
   // ── Stats ────────────────────────────────────────────────────────────────────
@@ -505,24 +514,25 @@
     resetStats();
     pendingRows = {};
 
-    const total    = parseInt(totalEl.value);
-    const validPct = parseFloat(validEl.value);
-    const fraudPct = parseFloat(fraudEl.value);
-    const delayMs  = parseInt(delayEl.value);
+    const total       = parseInt(totalEl.value);
+    const validPct    = parseFloat(validEl.value);
+    const fraudPct    = parseFloat(fraudEl.value);
+    const delayMs     = parseInt(delayEl.value);
+    const concurrency = parseInt(concurrencyEl.value);
 
     btnRun.disabled = true;
     btnStop.style.display = 'block';
     runStatus.textContent = 'Connecting…';
 
-    const qs = new URLSearchParams({ total, validPct, fraudPct, delayMs });
+    const qs = new URLSearchParams({ total, validPct, fraudPct, delayMs, concurrency });
     sse = new EventSource(`/api/test/run?${qs}`);
 
     sse.onmessage = (e) => {
       const msg = JSON.parse(e.data);
 
       if (msg.type === 'start') {
-        runStatus.textContent = `Running ${msg.total} requests…`;
-        addInfo(`▶ Starting ${msg.total} requests — ${msg.validPct}% valid / ${msg.fraudPct}% fraud / ${Math.max(0,100-msg.validPct-msg.fraudPct)}% waitlist`);
+        runStatus.textContent = `Running ${msg.total} requests (${msg.concurrency} at a time)…`;
+        addInfo(`▶ Starting ${msg.total} requests — ${msg.concurrency}× concurrency — ${msg.validPct}% valid / ${msg.fraudPct}% fraud / ${Math.max(0,100-msg.validPct-msg.fraudPct)}% waitlist`);
       }
 
       else if (msg.type === 'request') {

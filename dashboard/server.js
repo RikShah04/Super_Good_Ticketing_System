@@ -385,11 +385,11 @@ const CARDS = [
 const FRAUD_CARD = { cc: '4000000000000002', cardType: 'Visa', expiry: '12/27', cvv: '999' };
 
 app.get('/api/test/run', async (req, res) => {
-  const total    = Math.min(Math.max(parseInt(req.query.total    ?? 15), 1), 100);
-  const validPct = Math.max(parseFloat(req.query.validPct  ?? 60), 0);
-  const fraudPct = Math.max(parseFloat(req.query.fraudPct  ?? 20), 0);
-  const delayMs  = Math.min(Math.max(parseInt(req.query.delayMs  ?? 300), 50), 5000);
-  // remainder goes to waitlist
+  const total       = Math.min(Math.max(parseInt(req.query.total       ?? 15),  1), 200);
+  const validPct    = Math.max(parseFloat(req.query.validPct    ?? 60),  0);
+  const fraudPct    = Math.max(parseFloat(req.query.fraudPct    ?? 20),  0);
+  const delayMs     = Math.min(Math.max(parseInt(req.query.delayMs     ?? 300), 0), 5000);
+  const concurrency = Math.min(Math.max(parseInt(req.query.concurrency ?? 5),   1), 20);
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -398,7 +398,7 @@ app.get('/api/test/run', async (req, res) => {
 
   const send = (data) => { if (!res.destroyed) res.write(`data: ${JSON.stringify(data)}\n\n`); };
 
-  send({ type: 'start', total, validPct, fraudPct, delayMs });
+  send({ type: 'start', total, validPct, fraudPct, delayMs, concurrency });
 
   let events = [];
   try {
@@ -419,12 +419,9 @@ app.get('/api/test/run', async (req, res) => {
 
   const stats = { success: 0, fraud: 0, waitlist: 0, failed: 0, total };
 
-  for (let i = 0; i < total; i++) {
-    if (res.destroyed) break;
-
+  const buildRequest = (i) => {
     const rand = Math.random() * 100;
     const event = events[Math.floor(Math.random() * events.length)];
-
     let reqType, seats, paymentInfo;
     if (rand < validPct) {
       reqType = 'valid';
@@ -432,19 +429,19 @@ app.get('/api/test/run', async (req, res) => {
       paymentInfo = CARDS[Math.floor(Math.random() * CARDS.length)];
     } else if (rand < validPct + fraudPct) {
       reqType = 'fraud';
-      seats = 7;  // exceeds FRAUD_MAX_SEATS_THRESHOLD=6
+      seats = 7;
       paymentInfo = FRAUD_CARD;
     } else {
       reqType = 'waitlist';
-      seats = 9999;  // guaranteed oversell
+      seats = 9999;
       paymentInfo = CARDS[0];
     }
+    return { i, reqType, seats, paymentInfo, event, idemKey: randomUUID() };
+  };
 
-    const idemKey = randomUUID();
+  const fireOne = async (req) => {
+    const { i, reqType, seats, paymentInfo, event, idemKey } = req;
     const t0 = Date.now();
-
-    send({ type: 'request', i: i + 1, total, reqType, eventName: event.name ?? event.title ?? String(event.id), eventId: event.id, seats });
-
     try {
       const pr = await fetch('http://ticket-purchase:3000/purchase', {
         method: 'POST',
@@ -452,21 +449,34 @@ app.get('/api/test/run', async (req, res) => {
         body: JSON.stringify({ eventId: event.id, seats, paymentInfo, idemKey }),
       });
       const body = await pr.json().catch(() => ({}));
-      const latency = Date.now() - t0;
       const status = pr.status;
-
-      if (status === 200)      { stats.success++; }
-      else if (status === 409) { stats.waitlist++; }
-      else                     { stats.failed++; }
+      if (status === 200)      stats.success++;
+      else if (status === 409) stats.waitlist++;
+      else                     stats.failed++;
       if (reqType === 'fraud' && status === 200) stats.fraud++;
-
-      send({ type: 'result', i: i + 1, reqType, status, body, latency, stats: { ...stats } });
+      send({ type: 'result', i, reqType, status, body, latency: Date.now() - t0, stats: { ...stats } });
     } catch (e) {
       stats.failed++;
-      send({ type: 'result', i: i + 1, reqType, status: 0, error: e.message, latency: Date.now() - t0, stats: { ...stats } });
+      send({ type: 'result', i, reqType, status: 0, error: e.message, latency: Date.now() - t0, stats: { ...stats } });
+    }
+  };
+
+  // Send requests in concurrent batches
+  for (let base = 0; base < total && !res.destroyed; base += concurrency) {
+    const batchSize = Math.min(concurrency, total - base);
+    const batch = Array.from({ length: batchSize }, (_, j) => buildRequest(base + j + 1));
+
+    // Announce the whole batch at once so the UI shows them as pending
+    for (const r of batch) {
+      send({ type: 'request', i: r.i, total, reqType: r.reqType, eventName: r.event.name ?? String(r.event.id), eventId: r.event.id, seats: r.seats });
     }
 
-    if (i < total - 1) await new Promise(r => setTimeout(r, delayMs));
+    // Fire all in parallel, results stream back as each completes
+    await Promise.all(batch.map(fireOne));
+
+    if (base + batchSize < total && delayMs > 0) {
+      await new Promise(r => setTimeout(r, delayMs));
+    }
   }
 
   send({ type: 'done', stats });
