@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Good Ticketing — Architecture</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3352;
+      --text: #e2e8f0;
+      --muted: #7c85a8;
+      --green: #22c55e;
+      --green-bg: rgba(34,197,94,0.12);
+      --red: #ef4444;
+      --red-bg: rgba(239,68,68,0.12);
+      --yellow: #f59e0b;
+      --yellow-bg: rgba(245,158,11,0.12);
+      --blue: #3b82f6;
+      --blue-bg: rgba(59,130,246,0.12);
+      --purple: #a855f7;
+      --purple-bg: rgba(168,85,247,0.12);
+      --orange: #f97316;
+      --accent: #6366f1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+    header h1 span { color: var(--accent); }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    nav a:hover { color: var(--text); background: var(--surface2); }
+    nav a.active { color: var(--accent); background: var(--blue-bg); }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Diagram ── */
+    #diagram-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      min-height: 400px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    #diagram-wrap .mermaid {
+      width: 100%;
+    }
+
+    /* Mermaid dark theme overrides */
+    #diagram-wrap svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .legend-swatch {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* ── Service grid ── */
+    .service-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .svc-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+
+    .svc-card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .svc-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .svc-card h3 { font-size: 0.9rem; font-weight: 700; }
+    .svc-card .port { font-size: 0.72rem; color: var(--muted); font-family: monospace; }
+    .svc-card p { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-right: 4px;
+      margin-top: 6px;
+    }
+    .tag.gateway  { background: rgba(99,102,241,0.15); color: var(--accent); }
+    .tag.service  { background: var(--blue-bg);  color: var(--blue); }
+    .tag.worker   { background: var(--purple-bg); color: var(--purple); }
+    .tag.broker   { background: var(--red-bg);   color: var(--red); }
+    .tag.database { background: var(--green-bg); color: var(--green); }
+    .tag.monitor  { background: var(--yellow-bg);color: var(--yellow); }
+
+    /* ── Flow description ── */
+    .flow-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .flow-list li {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+    .flow-num {
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .flow-list li strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Super Good <span>Ticketing</span></h1>
+  <nav>
+    <a href="/">Overview</a>
+    <a href="/events.html">Events</a>
+    <a href="/test.html">Test Runner</a>
+    <a href="/architecture.html" class="active">Architecture</a>
+  </nav>
+</header>
+
+<!-- ── Diagram ── -->
+<p class="section-title">System Architecture</p>
+<div id="diagram-wrap">
+  <div class="mermaid">
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#22263a',
+    'primaryTextColor': '#e2e8f0',
+    'primaryBorderColor': '#2e3352',
+    'lineColor': '#7c85a8',
+    'secondaryColor': '#1a1d27',
+    'tertiaryColor': '#0f1117',
+    'background': '#0f1117',
+    'mainBkg': '#22263a',
+    'nodeBorder': '#2e3352',
+    'clusterBkg': '#1a1d27',
+    'clusterBorder': '#2e3352',
+    'titleColor': '#e2e8f0',
+    'edgeLabelBackground': '#1a1d27',
+    'fontFamily': 'Segoe UI, system-ui, sans-serif'
+  }
+}}%%
+flowchart TD
+  Client(["🌐 Client"])
+
+  subgraph gateway["API Gateway"]
+    Caddy["⚡ Caddy\n:3000"]
+  end
+
+  subgraph core["Core Services"]
+    TP["🎫 ticket-purchase"]
+    PAY["💳 payment"]
+    EC["📋 event-catalog"]
+    REF["↩️ refund"]
+    USR["👤 users"]
+  end
+
+  subgraph broker["Message Broker"]
+    Redis[("🔴 Redis")]
+  end
+
+  subgraph workers["Async Workers"]
+    FW["🔍 fraud-worker"]
+    ANL["📊 analytics"]
+    NOT["🔔 notification"]
+    WL["⏳ waitlist"]
+  end
+
+  subgraph databases["Databases (PostgreSQL)"]
+    TPDB[("tp-db")]
+    PAYDB[("payment-db")]
+    FDBDB[("fraud-db")]
+    ANLDB[("analytics-db")]
+    EDB[("events-db")]
+    RDB[("refund-db")]
+    UDB[("users-db")]
+  end
+
+  DSH["📡 dashboard\n:3007"]
+
+  %% Client flow
+  Client --> Caddy
+  Caddy -->|"/purchase"| TP
+  Caddy -->|"/payment"| PAY
+  Caddy -->|"/events"| EC
+
+  %% ticket-purchase calls out
+  TP -->|"reserve seats"| EC
+  TP -->|"process payment"| PAY
+  TP -->|"fraud:queue"| Redis
+  TP -->|"analytics:purchase:queue"| Redis
+  TP -->|"waitlist-jobs-{id}"| Redis
+  TP -->|"notification:pubsub"| Redis
+  TP --- TPDB
+
+  %% payment
+  PAY --- PAYDB
+
+  %% event-catalog
+  EC <-->|"cache event:*\nevents:*"| Redis
+  EC -->|"analytics:browse:queue"| Redis
+  EC --- EDB
+
+  %% refund
+  REF -->|"analytics:refund:queue"| Redis
+  REF --- RDB
+
+  %% users
+  USR --- UDB
+
+  %% workers consume from Redis
+  Redis -->|"fraud:queue"| FW
+  Redis -->|"analytics:purchase\nbrowse, refund queues"| ANL
+  Redis -->|"notification:pubsub"| NOT
+  Redis -->|"waitlist-jobs-{id}"| WL
+
+  %% worker actions
+  FW -->|"auto-refund"| REF
+  FW -->|"fraud:dlq"| Redis
+  FW --- FDBDB
+
+  ANL --- ANLDB
+
+  WL -->|"retry purchase"| TP
+  WL -->|"process payment"| PAY
+
+  %% dashboard monitors everything
+  DSH -.->|"health checks"| TP & PAY & EC & REF & USR & FW & ANL & NOT & WL
+  DSH -.->|"queue depths\nstats cache"| Redis
+
+  %% styles
+  classDef gateway  fill:#312e81,stroke:#6366f1,color:#e2e8f0
+  classDef service  fill:#1e3a5f,stroke:#3b82f6,color:#e2e8f0
+  classDef worker   fill:#3b0764,stroke:#a855f7,color:#e2e8f0
+  classDef broker   fill:#450a0a,stroke:#ef4444,color:#e2e8f0
+  classDef db       fill:#052e16,stroke:#22c55e,color:#e2e8f0
+  classDef monitor  fill:#451a03,stroke:#f59e0b,color:#e2e8f0
+  classDef client   fill:#22263a,stroke:#7c85a8,color:#e2e8f0
+
+  class Caddy gateway
+  class TP,PAY,EC,REF,USR service
+  class FW,ANL,NOT,WL worker
+  class Redis broker
+  class TPDB,PAYDB,FDBDB,ANLDB,EDB,RDB,UDB db
+  class DSH monitor
+  class Client client
+  </div>
+</div>
+
+<!-- ── Legend ── -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background:#312e81;border:1px solid #6366f1"></div> API Gateway</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#1e3a5f;border:1px solid #3b82f6"></div> Core Services</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#3b0764;border:1px solid #a855f7"></div> Async Workers</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#450a0a;border:1px solid #ef4444"></div> Message Broker</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#052e16;border:1px solid #22c55e"></div> PostgreSQL Databases</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#451a03;border:1px solid #f59e0b"></div> Dashboard / Monitoring</div>
+  <div class="legend-item" style="gap:12px"><span style="color:var(--muted);font-size:0.75rem">——</span> Sync call &nbsp;&nbsp; <span style="opacity:.5">- - -</span> Health / monitoring</div>
+</div>
+
+<!-- ── Purchase flow walkthrough ── -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+  <div class="card">
+    <p class="section-title">Happy-path purchase flow</p>
+    <ul class="flow-list">
+      <li><span class="flow-num">1</span><span>Client sends <strong>POST /purchase</strong> → Caddy → ticket-purchase</span></li>
+      <li><span class="flow-num">2</span><span>ticket-purchase checks seat availability with <strong>event-catalog</strong> (reserves atomically in Postgres)</span></li>
+      <li><span class="flow-num">3</span><span>ticket-purchase calls <strong>payment</strong> to charge the card (retries up to 3×)</span></li>
+      <li><span class="flow-num">4</span><span>On success, pushes jobs to <strong>fraud:queue</strong>, <strong>analytics:purchase:queue</strong>, and <strong>notification:pubsub</strong> in Redis</span></li>
+      <li><span class="flow-num">5</span><span><strong>fraud-worker</strong> consumes fraud:queue, validates the order, auto-refunds if flagged → fraud:dlq</span></li>
+      <li><span class="flow-num">6</span><span><strong>analytics</strong> consumes purchase/browse/refund queues and records to analytics-db</span></li>
+      <li><span class="flow-num">7</span><span><strong>notification</strong> subscribes to the pubsub channel and dispatches confirmations</span></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <p class="section-title">Waitlist &amp; edge cases</p>
+    <ul class="flow-list">
+      <li><span class="flow-num">1</span><span>If event-catalog returns <strong>409</strong> (no seats), ticket-purchase pushes a job to <strong>waitlist-jobs-{eventId}</strong></span></li>
+      <li><span class="flow-num">2</span><span><strong>waitlist-worker</strong> retries the purchase when seats free up, calling ticket-purchase and payment directly</span></li>
+      <li><span class="flow-num">3</span><span>Refunds go through the <strong>refund</strong> service → updates Postgres, pushes to <strong>analytics:refund:queue</strong>, calls event-catalog to unreserve seats</span></li>
+      <li><span class="flow-num">4</span><span>All <strong>/events</strong> reads are cached in Redis (60s TTL). Cache is busted on seat reservation or seeding</span></li>
+      <li><span class="flow-num">5</span><span>Idempotency keys (<strong>purchase-idem:{key}</strong>) prevent duplicate charges if the client retries</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- ── Service cards ── -->
+<p class="section-title">Service reference</p>
+<div class="service-grid">
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:rgba(99,102,241,0.15)">⚡</div>
+      <div><h3>Caddy</h3><div class="port">:3000 (public)</div></div>
+    </div>
+    <p>Reverse proxy and load balancer. Routes <code>/purchase</code>, <code>/payment</code>, <code>/events</code>, <code>/dashboard</code> to the correct upstream using round-robin with DNS-based service discovery.</p>
+    <span class="tag gateway">Gateway</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--blue-bg)">🎫</div>
+      <div><h3>ticket-purchase</h3><div class="port">:3000 (internal)</div></div>
+    </div>
+    <p>Orchestrates the full purchase flow. Checks seat availability, charges via payment, pushes to fraud/analytics/notification queues, and manages idempotency keys in Redis.</p>
+    <span class="tag service">Service</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--blue-bg)">💳</div>
+      <div><h3>payment</h3><div class="port">:3001 (internal)</div></div>
+    </div>
+    <p>Processes card charges. Validates card type (Visa / Master / Amex), stores payment records in payment-db. Returns a paymentID used for fraud tracking and refunds.</p>
+    <span class="tag service">Service</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--blue-bg)">📋</div>
+      <div><h3>event-catalog</h3><div class="port">:3005 (internal)</div></div>
+    </div>
+    <p>Manages event listings and seat inventory. Caches responses in Redis (60s TTL). Seat reservation uses a Postgres row-level lock (<code>FOR UPDATE</code>) to prevent overselling.</p>
+    <span class="tag service">Service</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--blue-bg)">↩️</div>
+      <div><h3>refund</h3><div class="port">:3000 (internal)</div></div>
+    </div>
+    <p>Handles refund requests from fraud-worker or clients. Unreserves seats in event-catalog, updates the DB, and pushes a refund event to the analytics queue.</p>
+    <span class="tag service">Service</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--blue-bg)">👤</div>
+      <div><h3>users</h3><div class="port">:3006</div></div>
+    </div>
+    <p>User account management. Stores user profiles in users-db. User IDs are passed as <code>x-user-id</code> headers so analytics can attribute browses and purchases.</p>
+    <span class="tag service">Service</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--purple-bg)">🔍</div>
+      <div><h3>fraud-worker</h3><div class="port">:3000 (internal)</div></div>
+    </div>
+    <p>Consumes <strong>fraud:queue</strong>. Flags orders with &gt;6 seats, price &gt;$500, or &gt;4 attempts from the same card. Flagged orders are auto-refunded; unprocessable ones go to <strong>fraud:dlq</strong>.</p>
+    <span class="tag worker">Worker</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--purple-bg)">📊</div>
+      <div><h3>analytics</h3><div class="port">:3000 (internal)</div></div>
+    </div>
+    <p>Consumes purchase, browse, and refund queues from Redis. Records aggregated event data to analytics-db. Failed messages go to <strong>analytics:dlq</strong>.</p>
+    <span class="tag worker">Worker</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--purple-bg)">🔔</div>
+      <div><h3>notification</h3><div class="port">:3000 (internal)</div></div>
+    </div>
+    <p>Subscribes to <strong>notification:pubsub</strong> in Redis. Dispatches purchase confirmation messages. Pub/sub means all replicas receive every notification.</p>
+    <span class="tag worker">Worker</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--purple-bg)">⏳</div>
+      <div><h3>waitlist</h3><div class="port">:3000 (internal)</div></div>
+    </div>
+    <p>Consumes <strong>waitlist-jobs-{eventId}</strong> queues. When seats free up (via unreserve), retries the purchase by calling ticket-purchase or payment directly.</p>
+    <span class="tag worker">Worker</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:#450a0a">🔴</div>
+      <div><h3>Redis</h3><div class="port">:6379 (internal)</div></div>
+    </div>
+    <p>Central message broker and cache. Hosts all queues (lists), DLQs, idempotency keys (hashes), event cache (strings), and notification channels (pub/sub).</p>
+    <span class="tag broker">Broker</span>
+    <span class="tag broker">Cache</span>
+  </div>
+
+  <div class="svc-card">
+    <div class="svc-card-header">
+      <div class="svc-icon" style="background:var(--yellow-bg)">📡</div>
+      <div><h3>dashboard</h3><div class="port">:3007</div></div>
+    </div>
+    <p>Monitoring UI. Polls all service health endpoints, reads queue depths from Redis, streams Docker container CPU/network stats via the Docker socket, and runs k6 load tests.</p>
+    <span class="tag monitor">Monitor</span>
+  </div>
+
+</div>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#22263a',
+      primaryTextColor: '#e2e8f0',
+      primaryBorderColor: '#2e3352',
+      lineColor: '#7c85a8',
+      secondaryColor: '#1a1d27',
+      tertiaryColor: '#0f1117',
+      background: '#0f1117',
+      mainBkg: '#22263a',
+      nodeBorder: '#2e3352',
+      clusterBkg: '#1a1d27',
+      clusterBorder: '#2e3352',
+      titleColor: '#e2e8f0',
+      edgeLabelBackground: '#1a1d27',
+      fontFamily: 'Segoe UI, system-ui, sans-serif',
+      fontSize: '13px',
+    },
+    flowchart: {
+      curve: 'basis',
+      padding: 20,
+    },
+  });
+</script>
+
+</body>
+</html>
