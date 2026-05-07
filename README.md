@@ -43,6 +43,37 @@ docker compose logs -f
 docker compose exec holmes bash
 ```
 
+### Dashboard
+
+The monitoring dashboard is available at **`http://localhost:3007`** once the system is running. No login required.
+
+| Page | URL | Description |
+|------|-----|-------------|
+| Overview | `http://localhost:3007/` | Live service health, queue depths, CPU/network stats, load test controls, and the purchase pipeline |
+| Events | `http://localhost:3007/events.html` | Browse all events, seed the event catalog, run k6 load tests |
+| Test Runner | `http://localhost:3007/test.html` | Configurable concurrent test: mix valid purchases, fraud triggers, and waitlist oversells |
+| Architecture | `http://localhost:3007/architecture.html` | Interactive system architecture diagram with service reference |
+
+
+#### Dashboard features
+
+- **Service health grid** — polls every 3 seconds, shows uptime, DB latency, CPU%, and network I/O per container
+- **Queue depths** — live view of all Redis queues (fraud, analytics, waitlist, DLQs) with color-coded fill bars
+- **Live request pipeline** — shows recent purchases bucketed by state (processing / success / failed)
+- **Load test panel** — run any k6 script directly from the UI; status dot and elapsed timer update live
+- **Test runner** — fire N concurrent requests with a configurable mix of valid, fraud-trigger (7+ seats), and waitlist (oversell) orders; results stream back live per request
+- **Reset All Data** — flushes Redis and truncates all Postgres tables in one click (re-seed events afterward)
+- **Seed Event Catalog** — populates `events-db` with 50 fake events (20–100 seats each) and immediately busts the Redis events cache
+
+#### Seeding events
+
+The event catalog starts empty. Before running any tests, seed it from the Events page or via the dashboard:
+
+```bash
+# From inside holmes (alternative to the UI button)
+docker compose exec event-catalog node seedEvents.js
+```
+
 ### Base URLs (development, all from holmes)
 
 ```
