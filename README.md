@@ -52,7 +52,7 @@ The monitoring dashboard is available at **`http://localhost:3007`** once the sy
 | Overview | `http://localhost:3007/` | Live service health, queue depths, CPU/network stats, load test controls, and the purchase pipeline |
 | Events | `http://localhost:3007/events.html` | Browse all events, seed the event catalog, run k6 load tests |
 | Test Runner | `http://localhost:3007/test.html` | Configurable concurrent test: mix valid purchases, fraud triggers, and waitlist oversells |
-| Architecture | `http://localhost:3007/architecture.html` | Interactive system architecture diagram with service reference |
+
 
 
 #### Dashboard features
