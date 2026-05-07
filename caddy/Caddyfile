@@ -1,4 +1,8 @@
 :80 {
+  handle_path /dashboard* {
+    reverse_proxy dashboard:3000
+  }
+
   handle_path /purchase* {
     reverse_proxy {
       dynamic a ticket-purchase 3000 {

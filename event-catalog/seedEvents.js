@@ -10,7 +10,7 @@ const NUM_EVENTS = 50;
 faker.seed(42);
 
 export function makeEvent() {
-    const totalSeats = faker.number.int({ min: 200, max: 10000 });
+    const totalSeats = faker.number.int({ min: 20, max: 100 });
     return {
         id: faker.string.uuid(),
         name: `${faker.person.lastName()} ${faker.helpers.arrayElement(['Tour', 'Festival', 'Live', 'World Tour'])}`,

@@ -294,6 +294,7 @@ services:
 
   event-catalog:
     build: ./event-catalog
+    container_name: event-catalog
     restart: unless-stopped
     expose:
       - "3005"
@@ -485,6 +486,31 @@ services:
       retries: 5
       start_period: 10s
   
+  dashboard:
+    build: ./dashboard
+    container_name: dashboard
+    restart: unless-stopped
+    ports:
+      - "3007:3000"
+    networks:
+      - team-net
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PORT=3000
+      - EVENT_CATALOG_CONTAINER=event-catalog
+      - HOLMES_CONTAINER=holmes
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
   caddy:
     image: caddy:2-alpine
     ports:

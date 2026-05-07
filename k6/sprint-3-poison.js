@@ -42,9 +42,9 @@ export const options = {
   },
 }
 
-// Fetch real eventID, must seed before running k6
+// Fetch all events, must seed before running k6
 export function setup() {
-  const res = http.get(`${EVENT_CATALOG_URL}/events?limit=1`)
+  const res = http.get(`${EVENT_CATALOG_URL}/events?limit=50`)
   if (res.status !== 200) {
     throw new Error(`event-catalog /events returned ${res.status} — is the service running?`)
   }
@@ -53,14 +53,18 @@ export function setup() {
   if (!events || events.length === 0) {
     throw new Error('event-catalog returned no events — run the seed script first')
   }
-  const event = events[0]
-  console.log(`Using event ${event.id} (${event.name || 'unnamed'}, $${event.priceusd}, ${event.availableseats} seats)`)
-  return { eventId: event.id }
+  const eventIds = events.map(e => e.id)
+  console.log(`Loaded ${eventIds.length} events to spread load across`)
+  return { eventIds }
+}
+
+function pickEvent(data) {
+  return data.eventIds[Math.floor(Math.random() * data.eventIds.length)]
 }
 
 function validOrder(data) {
   return JSON.stringify({
-    eventId: data.eventId,
+    eventId: pickEvent(data),
     seats: 1,
     paymentInfo: {
       cc: '4111111111111111',
@@ -73,10 +77,11 @@ function validOrder(data) {
 }
 
 function poisonOrder(data) {
+  const eventId = pickEvent(data)
   const variants = [
     // cc is 17 digits — passes payment (length >= 15) but fails fraud (length > 16)
     JSON.stringify({
-      eventId: data.eventId,
+      eventId,
       seats: 1,
       paymentInfo: { cc: '41111111111111111', cvv: '123', expiry: '04/29', cardType: 'Visa' },
       idemKey: `poison-s3-long-${__VU}-${__ITER}`,
@@ -84,14 +89,14 @@ function poisonOrder(data) {
     // cc is 16 chars with a non-digit — passes payment (length OK) but fails
     // fraud's /^\d{15,16}$/ regex check
     JSON.stringify({
-      eventId: data.eventId,
+      eventId,
       seats: 1,
       paymentInfo: { cc: '4111X11111111111', cvv: '123', expiry: '04/29', cardType: 'Visa' },
       idemKey: `poison-s3-alpha-${__VU}-${__ITER}`,
     }),
     // cc is 15 chars with a non-digit — same reason as above, different length path
     JSON.stringify({
-      eventId: data.eventId,
+      eventId,
       seats: 1,
       paymentInfo: { cc: '411111111111X11', cvv: '123', expiry: '04/29', cardType: 'Visa' },
       idemKey: `poison-s3-alpha15-${__VU}-${__ITER}`,

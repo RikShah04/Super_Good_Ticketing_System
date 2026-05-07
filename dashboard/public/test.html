@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Super Good Ticketing — Test Runner</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3352;
+      --text: #e2e8f0;
+      --muted: #7c85a8;
+      --green: #22c55e;
+      --green-bg: rgba(34,197,94,0.12);
+      --red: #ef4444;
+      --red-bg: rgba(239,68,68,0.12);
+      --yellow: #f59e0b;
+      --yellow-bg: rgba(245,158,11,0.12);
+      --blue: #3b82f6;
+      --blue-bg: rgba(59,130,246,0.12);
+      --purple: #a855f7;
+      --purple-bg: rgba(168,85,247,0.12);
+      --orange: #f97316;
+      --orange-bg: rgba(249,115,22,0.12);
+      --accent: #6366f1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+    header h1 span { color: var(--accent); }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      padding: 6px 12px;
+      border-radius: 6px;
+      transition: color 0.15s, background 0.15s;
+    }
+    nav a:hover { color: var(--text); background: var(--surface2); }
+    nav a.active { color: var(--accent); background: var(--blue-bg); }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+    /* ── Config panel ── */
+    .config-panel { display: flex; flex-direction: column; gap: 16px; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+
+    .field label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .field label span { color: var(--text); font-weight: 700; }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    input[type=number] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 7px 10px;
+      font-size: 0.9rem;
+    }
+
+    input[type=number]:focus { outline: none; border-color: var(--accent); }
+
+    .mix-bar {
+      height: 8px;
+      border-radius: 4px;
+      display: flex;
+      overflow: hidden;
+      margin-top: 2px;
+      gap: 2px;
+    }
+    .mix-bar div { border-radius: 2px; transition: flex 0.3s; }
+
+    .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-danger  { background: var(--red-bg); color: var(--red); border: 1px solid var(--red); }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+    }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat-cell {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      text-align: center;
+    }
+    .stat-cell .num {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+    .stat-cell .lbl { font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+    .stat-cell.green .num { color: var(--green); }
+    .stat-cell.orange .num { color: var(--orange); }
+    .stat-cell.yellow .num { color: var(--yellow); }
+    .stat-cell.red .num { color: var(--red); }
+
+    /* ── Progress bar ── */
+    .progress-wrap {
+      height: 6px;
+      background: var(--surface2);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    /* ── Feed ── */
+    #feed {
+      max-height: 520px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.82rem;
+    }
+
+    #feed:empty::before {
+      content: 'Configure a test and click Run to start…';
+      color: var(--muted);
+      font-style: italic;
+      padding: 20px 0;
+    }
+
+    .feed-row {
+      display: grid;
+      grid-template-columns: 28px 70px 1fr 55px 55px;
+      gap: 8px;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      animation: fadein 0.2s ease;
+    }
+
+    @keyframes fadein { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+    .feed-row.valid    { background: var(--green-bg);  border-color: rgba(34,197,94,0.2); }
+    .feed-row.fraud    { background: var(--orange-bg); border-color: rgba(249,115,22,0.2); }
+    .feed-row.waitlist { background: var(--yellow-bg); border-color: rgba(245,158,11,0.2); }
+    .feed-row.failed   { background: var(--red-bg);    border-color: rgba(239,68,68,0.2); }
+    .feed-row.info     { background: var(--surface2);  color: var(--muted); font-style: italic; grid-template-columns: 1fr; }
+    .feed-row.pending  { background: var(--blue-bg);   border-color: rgba(59,130,246,0.2); opacity: 0.7; }
+
+    .feed-num  { color: var(--muted); text-align: right; }
+    .feed-type { font-weight: 700; font-size: 0.75rem; padding: 2px 7px; border-radius: 4px; text-align: center; }
+    .feed-type.valid    { background: var(--green-bg);  color: var(--green); }
+    .feed-type.fraud    { background: var(--orange-bg); color: var(--orange); }
+    .feed-type.waitlist { background: var(--yellow-bg); color: var(--yellow); }
+    .feed-type.failed   { background: var(--red-bg);    color: var(--red); }
+
+    .feed-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .feed-status { font-weight: 700; text-align: center; font-size: 0.8rem; }
+    .feed-status.s200 { color: var(--green); }
+    .feed-status.s409 { color: var(--yellow); }
+    .feed-status.serr { color: var(--red); }
+
+    .feed-latency { color: var(--muted); text-align: right; }
+
+    .pipeline-hint {
+      margin-top: 14px;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .pipeline-hint a { color: var(--accent); text-decoration: none; }
+    .pipeline-hint a:hover { text-decoration: underline; }
+
+    #run-status {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 10px;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Super Good <span>Ticketing</span></h1>
+  <nav>
+    <a href="/">Overview</a>
+    <a href="/events.html">Events</a>
+    <a href="/test.html" class="active">Test Runner</a>
+  </nav>
+</header>
+
+<div class="layout">
+
+  <!-- ── Left: Config ── -->
+  <div class="config-panel">
+    <div class="card">
+      <div class="section-title">Test Configuration</div>
+
+      <div class="field" style="margin-bottom:14px">
+        <label>Total requests <span id="val-total">15</span></label>
+        <input type="range" id="inp-total" min="1" max="80" value="15" step="1">
+      </div>
+
+      <div class="field" style="margin-bottom:6px">
+        <label>Valid purchases <span id="val-valid" style="color:var(--green)">60%</span></label>
+        <input type="range" id="inp-valid" min="0" max="100" value="60" step="5">
+      </div>
+      <div class="field" style="margin-bottom:6px">
+        <label>Fraud triggers (7+ seats) <span id="val-fraud" style="color:var(--orange)">20%</span></label>
+        <input type="range" id="inp-fraud" min="0" max="100" value="20" step="5">
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label>Waitlist (oversell) — remainder <span id="val-waitlist" style="color:var(--yellow)">20%</span></label>
+      </div>
+
+      <div class="mix-bar" id="mix-bar" style="margin-bottom:18px">
+        <div id="bar-valid"    style="flex:60; background:var(--green)"></div>
+        <div id="bar-fraud"    style="flex:20; background:var(--orange)"></div>
+        <div id="bar-waitlist" style="flex:20; background:var(--yellow)"></div>
+      </div>
+
+      <div class="field" style="margin-bottom:14px">
+        <label>Concurrency (requests per batch) <span id="val-concurrency" style="color:var(--blue)">5</span></label>
+        <input type="range" id="inp-concurrency" min="1" max="20" value="5" step="1">
+        <small style="color:var(--muted);font-size:0.72rem">Higher = more items in queues at once</small>
+      </div>
+
+      <div class="field" style="margin-bottom:18px">
+        <label>Delay between batches (ms) <span id="val-delay">300</span></label>
+        <input type="range" id="inp-delay" min="0" max="2000" value="300" step="50">
+      </div>
+
+      <button class="btn btn-primary" id="btn-run" style="width:100%">▶ Run Test</button>
+      <button class="btn btn-danger"  id="btn-stop" style="width:100%;margin-top:8px;display:none">■ Stop</button>
+      <div id="run-status"></div>
+    </div>
+
+    <!-- What each type does -->
+    <div class="card" style="font-size:0.8rem;line-height:1.7">
+      <div class="section-title">What each request type does</div>
+      <div style="margin-bottom:8px">
+        <span style="color:var(--green);font-weight:700">Valid</span> — 1–3 seats, rotating card.
+        Routes: ticket-purchase → payment ✓ → fraud:queue → analytics:purchase:queue
+      </div>
+      <div style="margin-bottom:8px">
+        <span style="color:var(--orange);font-weight:700">Fraud trigger</span> — 7 seats (threshold is 6), repeated card.
+        Routes: ticket-purchase → payment ✓ → fraud:queue → fraud-worker flags → auto-refund → analytics
+      </div>
+      <div>
+        <span style="color:var(--yellow);font-weight:700">Waitlist</span> — 9999 seats (always oversells).
+        Routes: ticket-purchase → event-catalog (409) → waitlist-jobs queue
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Right: Results ── -->
+  <div>
+    <div class="stats-bar">
+      <div class="stat-cell">
+        <div class="num" id="stat-sent">0</div>
+        <div class="lbl">Sent</div>
+      </div>
+      <div class="stat-cell green">
+        <div class="num" id="stat-success">0</div>
+        <div class="lbl">Success</div>
+      </div>
+      <div class="stat-cell orange">
+        <div class="num" id="stat-fraud">0</div>
+        <div class="lbl">Fraud (queued)</div>
+      </div>
+      <div class="stat-cell yellow">
+        <div class="num" id="stat-waitlist">0</div>
+        <div class="lbl">Waitlisted</div>
+      </div>
+      <div class="stat-cell red">
+        <div class="num" id="stat-failed">0</div>
+        <div class="lbl">Failed</div>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+
+    <div class="card">
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Success (200)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div> Fraud queued (200 → flagged by worker)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div> Waitlisted (409)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Failed (4xx/5xx)</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:28px 70px 1fr 55px 55px;gap:8px;padding:0 10px 8px;font-size:0.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);margin-bottom:6px">
+        <div style="text-align:right">#</div>
+        <div>Type</div>
+        <div>Event / Details</div>
+        <div style="text-align:center">HTTP</div>
+        <div style="text-align:right">ms</div>
+      </div>
+
+      <div id="feed"></div>
+    </div>
+
+    <div class="pipeline-hint">
+      <span>Queue depths and the live pipeline update in real-time on the main dashboard.</span>
+      <a href="/" target="_blank">Open Overview →</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── Slider bindings ──────────────────────────────────────────────────────────
+  const totalEl       = document.getElementById('inp-total');
+  const validEl       = document.getElementById('inp-valid');
+  const fraudEl       = document.getElementById('inp-fraud');
+  const delayEl       = document.getElementById('inp-delay');
+  const concurrencyEl = document.getElementById('inp-concurrency');
+  const valTotal      = document.getElementById('val-total');
+  const valValid      = document.getElementById('val-valid');
+  const valFraud      = document.getElementById('val-fraud');
+  const valWaitlist   = document.getElementById('val-waitlist');
+  const valDelay      = document.getElementById('val-delay');
+  const valConcurrency= document.getElementById('val-concurrency');
+  const barValid  = document.getElementById('bar-valid');
+  const barFraud  = document.getElementById('bar-fraud');
+  const barWait   = document.getElementById('bar-waitlist');
+
+  function updateMix() {
+    const v = parseFloat(validEl.value);
+    const f = parseFloat(fraudEl.value);
+    if (v + f > 100) fraudEl.value = 100 - v;
+    const fClamped = parseFloat(fraudEl.value);
+    const w = Math.max(0, 100 - v - fClamped);
+    valTotal.textContent = totalEl.value;
+    valValid.textContent = v + '%';
+    valFraud.textContent = fClamped + '%';
+    valWaitlist.textContent = w + '%';
+    valDelay.textContent = delayEl.value === '0' ? 'none' : delayEl.value + 'ms';
+    valConcurrency.textContent = concurrencyEl.value;
+    barValid.style.flex = v;
+    barFraud.style.flex = fClamped;
+    barWait.style.flex  = w;
+  }
+
+  totalEl.addEventListener('input', updateMix);
+  validEl.addEventListener('input', updateMix);
+  fraudEl.addEventListener('input', updateMix);
+  delayEl.addEventListener('input', updateMix);
+  concurrencyEl.addEventListener('input', updateMix);
+  updateMix();
+
+  // ── Stats ────────────────────────────────────────────────────────────────────
+  const statSent    = document.getElementById('stat-sent');
+  const statSuccess = document.getElementById('stat-success');
+  const statFraud   = document.getElementById('stat-fraud');
+  const statWaitlist= document.getElementById('stat-waitlist');
+  const statFailed  = document.getElementById('stat-failed');
+  const progressFill= document.getElementById('progress-fill');
+  const feed        = document.getElementById('feed');
+  const runStatus   = document.getElementById('run-status');
+  const btnRun      = document.getElementById('btn-run');
+  const btnStop     = document.getElementById('btn-stop');
+
+  function resetStats() {
+    statSent.textContent = statSuccess.textContent = statFraud.textContent =
+      statWaitlist.textContent = statFailed.textContent = '0';
+    progressFill.style.width = '0%';
+    feed.innerHTML = '';
+  }
+
+  function updateStats(s, sent, total) {
+    statSent.textContent     = sent;
+    statSuccess.textContent  = s.success ?? 0;
+    statFraud.textContent    = s.fraud ?? 0;
+    statWaitlist.textContent = s.waitlist ?? 0;
+    statFailed.textContent   = s.failed ?? 0;
+    progressFill.style.width = total ? Math.round((sent / total) * 100) + '%' : '0%';
+  }
+
+  // ── Feed helpers ─────────────────────────────────────────────────────────────
+  function addFeedRow(num, type, desc, httpStatus, latency) {
+    const row = document.createElement('div');
+    row.className = 'feed-row ' + (type || 'info');
+
+    if (!type) {
+      row.textContent = desc;
+    } else {
+      const statusClass = httpStatus === 200 ? 's200' : httpStatus === 409 ? 's409' : 'serr';
+      const statusText  = httpStatus ? String(httpStatus) : '—';
+      row.innerHTML = `
+        <span class="feed-num">${num}</span>
+        <span class="feed-type ${type}">${type}</span>
+        <span class="feed-desc" title="${desc}">${desc}</span>
+        <span class="feed-status ${statusClass}">${statusText}</span>
+        <span class="feed-latency">${latency != null ? latency + 'ms' : '…'}</span>
+      `;
+    }
+    feed.prepend(row);
+  }
+
+  function addInfo(msg) {
+    const row = document.createElement('div');
+    row.className = 'feed-row info';
+    row.textContent = msg;
+    feed.prepend(row);
+  }
+
+  // ── Run ──────────────────────────────────────────────────────────────────────
+  let sse = null;
+  let pendingRows = {};
+
+  function startTest() {
+    resetStats();
+    pendingRows = {};
+
+    const total       = parseInt(totalEl.value);
+    const validPct    = parseFloat(validEl.value);
+    const fraudPct    = parseFloat(fraudEl.value);
+    const delayMs     = parseInt(delayEl.value);
+    const concurrency = parseInt(concurrencyEl.value);
+
+    btnRun.disabled = true;
+    btnStop.style.display = 'block';
+    runStatus.textContent = 'Connecting…';
+
+    const qs = new URLSearchParams({ total, validPct, fraudPct, delayMs, concurrency });
+    sse = new EventSource(`/api/test/run?${qs}`);
+
+    sse.onmessage = (e) => {
+      const msg = JSON.parse(e.data);
+
+      if (msg.type === 'start') {
+        runStatus.textContent = `Running ${msg.total} requests (${msg.concurrency} at a time)…`;
+        addInfo(`▶ Starting ${msg.total} requests — ${msg.concurrency}× concurrency — ${msg.validPct}% valid / ${msg.fraudPct}% fraud / ${Math.max(0,100-msg.validPct-msg.fraudPct)}% waitlist`);
+      }
+
+      else if (msg.type === 'request') {
+        // Add a placeholder row
+        const row = document.createElement('div');
+        row.id = 'row-' + msg.i;
+        row.className = 'feed-row pending';
+        row.innerHTML = `
+          <span class="feed-num">${msg.i}</span>
+          <span class="feed-type ${msg.reqType}">${msg.reqType}</span>
+          <span class="feed-desc">${msg.eventName} × ${msg.seats === 9999 ? '9999 (oversell)' : msg.seats}</span>
+          <span class="feed-status" style="color:var(--muted)">…</span>
+          <span class="feed-latency">…</span>
+        `;
+        feed.prepend(row);
+        updateStats(msg.stats ?? {}, msg.i - 1, msg.total);
+      }
+
+      else if (msg.type === 'result') {
+        const existing = document.getElementById('row-' + msg.i);
+        const httpStatus = msg.status;
+        let rowType = msg.reqType;
+        if (msg.reqType !== 'waitlist' && httpStatus !== 200) rowType = 'failed';
+        if (msg.reqType === 'waitlist' && httpStatus === 409) rowType = 'waitlist';
+
+        const statusClass = httpStatus === 200 ? 's200' : httpStatus === 409 ? 's409' : 'serr';
+        const desc = existing
+          ? existing.querySelector('.feed-desc').textContent
+          : `Request ${msg.i}`;
+        const detail = msg.body?.message ?? msg.error ?? '';
+
+        if (existing) {
+          existing.className = 'feed-row ' + rowType;
+          existing.innerHTML = `
+            <span class="feed-num">${msg.i}</span>
+            <span class="feed-type ${rowType}">${rowType}</span>
+            <span class="feed-desc" title="${detail}">${desc} — ${detail}</span>
+            <span class="feed-status ${statusClass}">${httpStatus || 'ERR'}</span>
+            <span class="feed-latency">${msg.latency}ms</span>
+          `;
+        }
+
+        updateStats(msg.stats ?? {}, msg.i, msg.total ?? parseInt(totalEl.value));
+      }
+
+      else if (msg.type === 'error') {
+        addInfo('⚠ ' + msg.message);
+        endTest('Error: ' + msg.message);
+      }
+
+      else if (msg.type === 'done') {
+        const s = msg.stats;
+        addInfo(`✓ Done — ${s.success} success, ${s.fraud} fraud queued, ${s.waitlist} waitlisted, ${s.failed} failed`);
+        progressFill.style.width = '100%';
+        endTest('Finished.');
+      }
+    };
+
+    sse.onerror = () => {
+      if (sse.readyState === EventSource.CLOSED) {
+        endTest('Connection closed.');
+      }
+    };
+  }
+
+  function endTest(msg) {
+    if (sse) { sse.close(); sse = null; }
+    btnRun.disabled = false;
+    btnStop.style.display = 'none';
+    runStatus.textContent = msg;
+  }
+
+  btnRun.addEventListener('click', startTest);
+  btnStop.addEventListener('click', () => endTest('Stopped.'));
+</script>
+
+</body>
+</html>
